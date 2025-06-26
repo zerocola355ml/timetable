@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}설정 조정 - 시험 시간표 배정 시스템{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h2 class="text-primary">
+                <i class="fas fa-cog me-2"></i>
+                설정 조정
+            </h2>
+            <p class="text-muted">시험 시간표 배정에 사용할 설정값들을 조정하세요.</p>
+        </div>
+
+        <!-- Configuration Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-sliders-h me-2"></i>
+                    배정 설정
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="configForm">
+                    <!-- Basic Settings -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-calendar-day me-2"></i>
+                                기본 설정
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="maxExamsPerDay" class="form-label">
+                                    학생별 하루 최대 시험 개수
+                                </label>
+                                <input type="number" class="form-control" id="maxExamsPerDay" 
+                                       value="3" min="1" max="5">
+                                <div class="form-text">한 학생이 하루에 치를 수 있는 최대 시험 개수</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="maxHardExamsPerDay" class="form-label">
+                                    학생별 하루 최대 어려운 시험 개수
+                                </label>
+                                <input type="number" class="form-control" id="maxHardExamsPerDay" 
+                                       value="2" min="1" max="3">
+                                <div class="form-text">한 학생이 하루에 치를 수 있는 최대 어려운 시험 개수</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-clock me-2"></i>
+                                시간 설정
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="hardExamThreshold" class="form-label">
+                                    어려운 과목 기준 시간 (분)
+                                </label>
+                                <input type="number" class="form-control" id="hardExamThreshold" 
+                                       value="60" min="30" max="120">
+                                <div class="form-text">이 시간 이상의 과목을 어려운 과목으로 분류</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="examDays" class="form-label">
+                                    시험 일수
+                                </label>
+                                <input type="number" class="form-control" id="examDays" 
+                                       value="5" min="1" max="7">
+                                <div class="form-text">시험을 치를 총 일수</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Period Limits -->
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-hourglass-half me-2"></i>
+                            교시별 시간 제한 (분)
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="period1Limit" class="form-label">1교시</label>
+                                <input type="number" class="form-control" id="period1Limit" 
+                                       value="80" min="30" max="120">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="period2Limit" class="form-label">2교시</label>
+                                <input type="number" class="form-control" id="period2Limit" 
+                                       value="50" min="30" max="120">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="period3Limit" class="form-label">3교시</label>
+                                <input type="number" class="form-control" id="period3Limit" 
+                                       value="100" min="30" max="120">
+                            </div>
+                        </div>
+                        <div class="form-text">각 교시별로 배정 가능한 최대 시험 시간</div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="text-center">
+                        <button type="button" class="btn btn-outline-secondary me-2" onclick="resetToDefaults()">
+                            <i class="fas fa-undo me-2"></i>
+                            기본값으로 초기화
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg" onclick="createSchedule()" id="createBtn">
+                            <i class="fas fa-magic me-2"></i>
+                            시험 시간표 생성
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div class="card mt-4" id="progressCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-spinner fa-spin me-2"></i>
+                    시험 시간표 생성 중...
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <p class="text-muted mb-0">최적화 알고리즘이 실행 중입니다. 잠시만 기다려주세요...</p>
+            </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    설정 도움말
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">어려운 과목 기준</h6>
+                        <p class="small text-muted">
+                            이 시간(분) 이상의 과목을 어려운 과목으로 분류합니다. 
+                            어려운 과목은 하루에 제한된 개수만 배정됩니다.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary">교시별 시간 제한</h6>
+                        <p class="small text-muted">
+                            각 교시별로 배정 가능한 최대 시험 시간을 설정합니다. 
+                            이 시간을 초과하는 과목은 해당 교시에 배정되지 않습니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load saved configuration if exists
+    loadSavedConfig();
+});
+
+function getConfigData() {
+    return {
+        max_exams_per_day: parseInt(document.getElementById('maxExamsPerDay').value),
+        max_hard_exams_per_day: parseInt(document.getElementById('maxHardExamsPerDay').value),
+        hard_exam_threshold: parseInt(document.getElementById('hardExamThreshold').value),
+        exam_days: parseInt(document.getElementById('examDays').value),
+        periods_per_day: 3, // Fixed for now
+        period_limits: {
+            '1교시': parseInt(document.getElementById('period1Limit').value),
+            '2교시': parseInt(document.getElementById('period2Limit').value),
+            '3교시': parseInt(document.getElementById('period3Limit').value)
+        }
+    };
+}
+
+function validateConfig(config) {
+    const errors = [];
+    
+    if (config.max_hard_exams_per_day > config.max_exams_per_day) {
+        errors.push('어려운 시험 개수는 전체 시험 개수보다 클 수 없습니다.');
+    }
+    
+    if (config.hard_exam_threshold < 30 || config.hard_exam_threshold > 120) {
+        errors.push('어려운 과목 기준 시간은 30분에서 120분 사이여야 합니다.');
+    }
+    
+    if (config.exam_days < 1 || config.exam_days > 7) {
+        errors.push('시험 일수는 1일에서 7일 사이여야 합니다.');
+    }
+    
+    return errors;
+}
+
+function createSchedule() {
+    const config = getConfigData();
+    const errors = validateConfig(config);
+    
+    if (errors.length > 0) {
+        showAlert(errors.join('<br>'), 'danger');
+        return;
+    }
+    
+    // Show progress
+    document.getElementById('progressCard').style.display = 'block';
+    document.getElementById('createBtn').disabled = true;
+    
+    // Simulate progress
+    const progressBar = document.querySelector('.progress-bar');
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = progress + '%';
+    }, 500);
+    
+    // Send request
+    fetch('/api/schedule', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ config: config })
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        if (data.success) {
+            showAlert('시험 시간표가 성공적으로 생성되었습니다!', 'success');
+            setTimeout(() => {
+                window.location.href = '/results';
+            }, 1500);
+        } else {
+            showAlert(data.error || '시험 시간표 생성에 실패했습니다.', 'danger');
+            document.getElementById('progressCard').style.display = 'none';
+            document.getElementById('createBtn').disabled = false;
+        }
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        console.error('Error:', error);
+        showAlert('시험 시간표 생성 중 오류가 발생했습니다.', 'danger');
+        document.getElementById('progressCard').style.display = 'none';
+        document.getElementById('createBtn').disabled = false;
+    });
+}
+
+function resetToDefaults() {
+    document.getElementById('maxExamsPerDay').value = 3;
+    document.getElementById('maxHardExamsPerDay').value = 2;
+    document.getElementById('hardExamThreshold').value = 60;
+    document.getElementById('examDays').value = 5;
+    document.getElementById('period1Limit').value = 80;
+    document.getElementById('period2Limit').value = 50;
+    document.getElementById('period3Limit').value = 100;
+    
+    showAlert('설정이 기본값으로 초기화되었습니다.', 'info');
+}
+
+function loadSavedConfig() {
+    // Load from localStorage if available
+    const saved = localStorage.getItem('examScheduleConfig');
+    if (saved) {
+        try {
+            const config = JSON.parse(saved);
+            document.getElementById('maxExamsPerDay').value = config.max_exams_per_day || 3;
+            document.getElementById('maxHardExamsPerDay').value = config.max_hard_exams_per_day || 2;
+            document.getElementById('hardExamThreshold').value = config.hard_exam_threshold || 60;
+            document.getElementById('examDays').value = config.exam_days || 5;
+            document.getElementById('period1Limit').value = config.period_limits?.['1교시'] || 80;
+            document.getElementById('period2Limit').value = config.period_limits?.['2교시'] || 50;
+            document.getElementById('period3Limit').value = config.period_limits?.['3교시'] || 100;
+        } catch (e) {
+            console.error('Failed to load saved config:', e);
+        }
+    }
+}
+
+// Save config when form changes
+document.addEventListener('change', function() {
+    const config = getConfigData();
+    localStorage.setItem('examScheduleConfig', JSON.stringify(config));
+});
+</script>
+{% endblock %} 
