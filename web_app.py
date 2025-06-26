@@ -45,20 +45,39 @@ def upload_files():
         files = request.files.getlist('files')
         uploaded_files = []
         
+        print(f"Received {len(files)} files")  # 디버깅
+        
         for file in files:
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                uploaded_files.append(filename)
+            if file and file.filename:  # 파일이 존재하고 파일명이 있는 경우
+                print(f"Processing file: {file.filename}")  # 디버깅
+                
+                if allowed_file(file.filename):
+                    # 원본 파일명 유지 (secure_filename 사용하지 않음)
+                    filename = file.filename
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(filepath)
+                    uploaded_files.append(filename)
+                    print(f"Saved file: {filename} to {filepath}")  # 디버깅
+                else:
+                    print(f"Invalid file format: {file.filename}")  # 디버깅
+                    flash(f'허용되지 않는 파일 형식: {file.filename}', 'error')
             else:
-                flash(f'허용되지 않는 파일 형식: {file.filename}', 'error')
+                print("Empty file or no filename")  # 디버깅
+        
+        print(f"Uploaded files: {uploaded_files}")  # 디버깅
         
         if uploaded_files:
             flash(f'{len(uploaded_files)}개 파일이 업로드되었습니다.', 'success')
-            return redirect(url_for('configure'))
+            return jsonify({
+                'success': True,
+                'message': f'{len(uploaded_files)}개 파일이 업로드되었습니다.',
+                'files': uploaded_files
+            })
         else:
-            flash('업로드된 파일이 없습니다.', 'error')
+            return jsonify({
+                'success': False,
+                'error': '업로드된 파일이 없습니다.'
+            }), 400
     
     return render_template('upload.html')
 
@@ -122,6 +141,8 @@ def create_schedule():
             }), 400
             
     except Exception as e:
+        print(f"Error in create_schedule: {str(e)}")  # 디버깅
+        print(f"Traceback: {traceback.format_exc()}")  # 디버깅
         return jsonify({
             'success': False,
             'error': f'오류가 발생했습니다: {str(e)}',
@@ -182,6 +203,8 @@ def upload_status():
     """업로드된 파일 상태 확인"""
     try:
         files = os.listdir(UPLOAD_FOLDER)
+        print(f"Files in upload folder: {files}")  # 디버깅
+        
         required_files = [
             'bunbanbaejeongpyo.xlsx',
             '시험 범위.xlsx', 
@@ -193,12 +216,15 @@ def upload_status():
         for file in required_files:
             status[file] = file in files
         
+        print(f"File status: {status}")  # 디버깅
+        
         return jsonify({
             'success': True,
             'files': status,
             'all_uploaded': all(status.values())
         })
     except Exception as e:
+        print(f"Error in upload_status: {str(e)}")  # 디버깅
         return jsonify({
             'success': False,
             'error': str(e)

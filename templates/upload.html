@@ -185,7 +185,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function uploadFiles() {
-        const formData = new FormData(uploadForm);
+        const formData = new FormData();
+        const files = fileInput.files;
+        
+        if (files.length === 0) {
+            showAlert('업로드할 파일을 선택해주세요.', 'warning');
+            return;
+        }
+        
+        // Add all files to FormData
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
         
         showLoading('uploadBtn');
         
@@ -193,7 +204,12 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showAlert('파일이 성공적으로 업로드되었습니다!', 'success');
@@ -206,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            showAlert('업로드 중 오류가 발생했습니다.', 'danger');
+            showAlert('업로드 중 오류가 발생했습니다: ' + error.message, 'danger');
         })
         .finally(() => {
             hideLoading('uploadBtn', '<i class="fas fa-upload me-2"></i>업로드');
