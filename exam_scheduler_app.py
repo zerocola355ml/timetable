@@ -42,8 +42,8 @@ class ExamSchedulerApp:
             (self.student_conflict_dict, _, 
              self.student_names, self.enroll_bool) = self.data_loader.load_enrollment_data()
             
-            # 2. 과목 정보 로드
-            self.subject_info_dict = self.data_loader.load_subject_info()
+            # 2. 과목 정보 로드 (커스텀 편집 반영)
+            self.subject_info_dict = self.data_loader.load_custom_subject_info()
             
             # 3. 시험 정보 로드
             self.exam_info = self.data_loader.load_exam_info()
@@ -51,9 +51,9 @@ class ExamSchedulerApp:
             # 4. 교사 불가능 날짜 로드
             self.teacher_unavailable_dates = self.data_loader.load_teacher_unavailable()
             
-            # 5. 충돌 딕셔너리 생성
-            self.listening_conflict_dict, self.teacher_conflict_dict = (
-                self.data_loader.generate_conflict_dicts(self.subject_info_dict)
+            # 5. 커스텀 충돌 데이터 로드 (웹 편집 반영)
+            self.student_conflict_dict, self.listening_conflict_dict, self.teacher_conflict_dict = (
+                self.data_loader.load_custom_conflicts()
             )
             
             # 6. 학생별 과목 매핑 생성
@@ -82,7 +82,7 @@ class ExamSchedulerApp:
         try:
             # 1. 시험 슬롯 생성
             slots = self.scheduler.create_slots(self.exam_info['시험날짜'])
-            slot_to_day, slot_to_period_limit = self.scheduler.create_slot_mappings(slots)
+            slot_to_day, slot_to_period_limit = self.scheduler.create_slot_mappings(slots, self.exam_info)
             
             # 2. 모델 구축
             self.scheduler.build_model(

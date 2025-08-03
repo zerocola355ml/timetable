@@ -134,13 +134,41 @@ class DataLoader:
             # 딕셔너리 저장
             subject_info_dict[subject] = {
                 '시간': time_processed,
-                '듣기': listen_processed,
-                '자율': self_processed,
+                '듣기평가': listen_processed,
+                '자율감독': self_processed,
                 '학년': grade_val,
                 '담당교사': teacher_list
             }
         
         return subject_info_dict
+
+    def load_custom_subject_info(self) -> Dict[str, Dict[str, Any]]:
+        """
+        커스텀 과목 정보를 로드하고 원본과 병합합니다.
+        
+        Returns:
+            Dict[str, Dict[str, Any]]: 병합된 과목별 정보 딕셔너리
+        """
+        # 원본 과목 정보 로드
+        original_subject_info = self.load_subject_info()
+        
+        # 커스텀 과목 정보 로드
+        custom_subject_info = self._load_json_file('custom_subject_info.json', {})
+        
+        # 원본과 커스텀 데이터 병합
+        merged_subject_info = {}
+        for subject, info in original_subject_info.items():
+            merged_subject_info[subject] = info.copy()
+            if subject in custom_subject_info:
+                # 커스텀 데이터로 덮어쓰기
+                merged_subject_info[subject].update(custom_subject_info[subject])
+        
+        # 커스텀에서만 있는 과목들 추가
+        for subject, info in custom_subject_info.items():
+            if subject not in original_subject_info:
+                merged_subject_info[subject] = info
+        
+        return merged_subject_info
     
     def load_exam_info(self, file_path: Union[str, Path] = "시험 정보.xlsx") -> Dict[str, Any]:
         """
@@ -181,12 +209,27 @@ class DataLoader:
                 '진행시간': duration
             }
         
+        # 날짜별 교시 시간 구조로 변환
+        date_periods = {}
+        for day in range(1, 7):  # 1~6일
+            date_periods[day] = {}
+            for period in range(1, 5):  # 1~4교시
+                time_label = f'제{day}일{period}교시'
+                if time_label in exam_times:
+                    time_data = exam_times[time_label]
+                    date_periods[day][period] = {
+                        'start_time': time_data['시작'],
+                        'end_time': time_data['종료'],
+                        'duration': time_data['진행시간']
+                    }
+        
         return {
             '학년도': exam_year,
             '학기': exam_semester,
             '고사종류': exam_type,
             '시험날짜': exam_dates,
-            '시험타임': exam_times
+            '시험타임': exam_times,  # 기존 구조 유지 (하위 호환성)
+            'date_periods': date_periods  # 새로운 날짜별 구조
         }
     
     def load_teacher_unavailable(self, file_path: Union[str, Path] = "시험 불가 교사.xlsx") -> Dict[str, List[str]]:
@@ -263,3 +306,137 @@ class DataLoader:
         file_path = self.data_dir / filename
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2) 
+    
+    def load_custom_conflicts(self) -> Tuple[Dict[str, List[str]], Dict[str, List[str]], Dict[str, List[str]]]:
+        """
+        커스텀 충돌 데이터를 로드합니다 (웹 편집 반영).
+        
+        Returns:
+            Tuple[Dict, Dict, Dict]: (student_conflicts, listening_conflicts, teacher_conflicts)
+        """
+        # 1. 원본 충돌 데이터 로드
+        original_student_conflicts, _ = self.load_enrollment_data()
+        original_listening_conflicts, original_teacher_conflicts = self.generate_conflict_dicts(
+            self.load_subject_info()
+        )
+        
+        # 2. 커스텀 충돌 파일들 로드
+        custom_student_conflicts = self._load_json_file('custom_student_conflicts.json', [])
+        custom_student_removed = self._load_json_file('custom_student_removed_conflicts.json', [])
+        custom_listening_conflicts = self._load_json_file('custom_listening_conflicts.json', [])
+        custom_teacher_conflicts = self._load_json_file('custom_teacher_conflicts.json', [])
+        custom_teacher_removed = self._load_json_file('custom_teacher_removed_conflicts.json', [])
+        
+        # 3. 학생 충돌 처리
+        student_conflicts = self._merge_student_conflicts(
+            original_student_conflicts, custom_student_conflicts, custom_student_removed
+        )
+        
+        # 4. 듣기 충돌 처리
+        listening_conflicts = self._merge_listening_conflicts(
+            original_listening_conflicts, custom_listening_conflicts
+        )
+        
+        # 5. 교사 충돌 처리
+        teacher_conflicts = self._merge_teacher_conflicts(
+            original_teacher_conflicts, custom_teacher_conflicts, custom_teacher_removed
+        )
+        
+        return student_conflicts, listening_conflicts, teacher_conflicts
+    
+    def _load_json_file(self, filename: str, default_value: Any) -> Any:
+        """JSON 파일을 로드합니다."""
+        file_path = self.data_dir / filename
+        if file_path.exists():
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading {filename}: {e}")
+        return default_value
+    
+    def _merge_student_conflicts(self, original: Dict[str, List[str]], 
+                                custom_added: List[Dict], 
+                                custom_removed: List[Dict]) -> Dict[str, List[str]]:
+        """학생 충돌을 병합합니다."""
+        # 원본 충돌 복사
+        merged = {subject: conflicts.copy() for subject, conflicts in original.items()}
+        
+        # 제거된 충돌 처리
+        removed_pairs = set()
+        for removed in custom_removed:
+            subject1, subject2 = removed['subject1'], removed['subject2']
+            removed_pairs.add((subject1, subject2))
+            removed_pairs.add((subject2, subject1))
+        
+        # 원본에서 제거된 충돌 삭제
+        for subject, conflicts in merged.items():
+            merged[subject] = [c for c in conflicts if (subject, c) not in removed_pairs]
+        
+        # 추가된 커스텀 충돌 처리
+        for custom_conflict in custom_added:
+            subject1, subject2 = custom_conflict['subject1'], custom_conflict['subject2']
+            if (subject1, subject2) not in removed_pairs and (subject2, subject1) not in removed_pairs:
+                if subject2 not in merged.get(subject1, []):
+                    if subject1 not in merged:
+                        merged[subject1] = []
+                    merged[subject1].append(subject2)
+                if subject1 not in merged.get(subject2, []):
+                    if subject2 not in merged:
+                        merged[subject2] = []
+                    merged[subject2].append(subject1)
+        
+        return merged
+    
+    def _merge_listening_conflicts(self, original: Dict[str, List[str]], 
+                                  custom_added: List[Dict]) -> Dict[str, List[str]]:
+        """듣기 충돌을 병합합니다."""
+        # 원본 충돌 복사
+        merged = {subject: conflicts.copy() for subject, conflicts in original.items()}
+        
+        # 추가된 커스텀 충돌 처리
+        for custom_conflict in custom_added:
+            subject1, subject2 = custom_conflict['subject1'], custom_conflict['subject2']
+            if subject2 not in merged.get(subject1, []):
+                if subject1 not in merged:
+                    merged[subject1] = []
+                merged[subject1].append(subject2)
+            if subject1 not in merged.get(subject2, []):
+                if subject2 not in merged:
+                    merged[subject2] = []
+                merged[subject2].append(subject1)
+        
+        return merged
+    
+    def _merge_teacher_conflicts(self, original: Dict[str, List[str]], 
+                                custom_added: List[Dict], 
+                                custom_removed: List[Dict]) -> Dict[str, List[str]]:
+        """교사 충돌을 병합합니다."""
+        # 원본 충돌 복사
+        merged = {subject: conflicts.copy() for subject, conflicts in original.items()}
+        
+        # 제거된 충돌 처리
+        removed_pairs = set()
+        for removed in custom_removed:
+            subject1, subject2 = removed['subject1'], removed['subject2']
+            removed_pairs.add((subject1, subject2))
+            removed_pairs.add((subject2, subject1))
+        
+        # 원본에서 제거된 충돌 삭제
+        for subject, conflicts in merged.items():
+            merged[subject] = [c for c in conflicts if (subject, c) not in removed_pairs]
+        
+        # 추가된 커스텀 충돌 처리
+        for custom_conflict in custom_added:
+            subject1, subject2 = custom_conflict['subject1'], custom_conflict['subject2']
+            if (subject1, subject2) not in removed_pairs and (subject2, subject1) not in removed_pairs:
+                if subject2 not in merged.get(subject1, []):
+                    if subject1 not in merged:
+                        merged[subject1] = []
+                    merged[subject1].append(subject2)
+                if subject1 not in merged.get(subject2, []):
+                    if subject2 not in merged:
+                        merged[subject2] = []
+                    merged[subject2].append(subject1)
+        
+        return merged 

@@ -23,16 +23,31 @@ class ExamScheduler:
         periods = [f'{i}교시' for i in range(1, self.config.periods_per_day + 1)]
         return [f'{day}{period}' for day in days for period in periods]
     
-    def create_slot_mappings(self, slots: List[str]) -> Tuple[Dict[str, str], Dict[str, int]]:
+    def create_slot_mappings(self, slots: List[str], exam_info: Dict[str, Any]) -> Tuple[Dict[str, str], Dict[str, int]]:
         """슬롯 관련 매핑을 생성합니다."""
         # slot -> day 매핑
         slot_to_day = {slot: slot[:3] for slot in slots}
         
-        # slot별 허용 최대 시간(분)
+        # slot별 허용 최대 시간(분) - 날짜별 교시 시간 사용
         slot_to_period_limit = {}
+        date_periods = exam_info.get('date_periods', {})
+        
         for slot in slots:
-            period = slot[-3:]  # '1교시', '2교시', '3교시'
-            slot_to_period_limit[slot] = self.config.period_limits.get(period, 100)
+            # slot 형식: '제1일1교시'
+            day_part = slot[:3]  # '제1일'
+            period_part = slot[3:]  # '1교시'
+            
+            # 날짜 번호 추출
+            day_num = int(day_part[1])  # '제1일' -> 1
+            period_num = int(period_part[0])  # '1교시' -> 1
+            
+            # 날짜별 교시 시간에서 해당 시간 찾기
+            if day_num in date_periods and period_num in date_periods[day_num]:
+                period_data = date_periods[day_num][period_num]
+                slot_to_period_limit[slot] = period_data.get('duration', 60)
+            else:
+                # 기본값 사용
+                slot_to_period_limit[slot] = self.config.period_limits.get(period_part, 100)
         
         return slot_to_day, slot_to_period_limit
     
