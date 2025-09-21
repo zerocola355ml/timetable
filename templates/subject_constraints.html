@@ -1,0 +1,1151 @@
+{% extends "base.html" %}
+
+{% block title %}과목 조건 설정 - 시험 시간표 배정 시스템{% endblock %}
+
+{% block extra_css %}
+<style>
+    .constraint-card {
+        border-left: 4px solid #007bff;
+        margin-bottom: 1rem;
+    }
+    
+    .constraint-card .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .time-slot-badge {
+        background-color: #6c757d;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .subject-badge {
+        background-color: #007bff;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .warning-section {
+        display: none;
+    }
+    
+    .main-content {
+        display: none;
+    }
+    
+    .loading-spinner {
+        display: none;
+    }
+    
+    .constraint-item {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    
+    /* 검색 가능한 단일 선택 드롭다운 스타일 */
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+    
+    .searchable-select .select-input {
+        width: 100%;
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        background-color: #fff;
+        cursor: pointer;
+    }
+    
+    .searchable-select .select-input:focus {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .searchable-select .dropdown-arrow {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #6c757d;
+    }
+    
+    .searchable-select .dropdown-menu-custom {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    
+    .searchable-select .dropdown-item-custom {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .searchable-select .dropdown-item-custom:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .searchable-select .dropdown-item-custom:last-child {
+        border-bottom: none;
+    }
+    
+    .searchable-select .no-results {
+        padding: 0.5rem 0.75rem;
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+    }
+    
+    .searchable-select .dropdown-item-custom.highlighted {
+        background-color: #0d6efd !important;
+        color: white !important;
+    }
+    
+
+    
+
+    
+    /* 시험 시간표 그리드 스타일 */
+    #timeSlotTable {
+        font-size: 0.9rem;
+    }
+    
+    #timeSlotTable th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid #dee2e6;
+    }
+    
+    #timeSlotTable td {
+        border: 1px solid #dee2e6;
+        padding: 0.5rem;
+    }
+    
+    #timeSlotTable .form-check {
+        margin: 0;
+    }
+    
+    #timeSlotTable .form-check-input {
+        margin: 0;
+    }
+    
+    #timeSlotTable .form-check-label {
+        font-size: 0.8rem;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- 경고 메시지 섹션 -->
+    <div id="warningSection" class="warning-section">
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <h4 id="warningTitle">경고</h4>
+                    <p id="warningMessage" class="mb-3">필요한 파일이 없습니다.</p>
+                    <a id="warningAction" href="#" class="btn btn-warning">
+                        <i class="fas fa-arrow-right me-2"></i>해당 설정 페이지로 이동
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 콘텐츠 -->
+    <div id="mainContent" class="main-content">
+        <!-- 헤더 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-book me-2"></i>과목 조건 설정</h2>
+                    <div>
+                        <button class="btn btn-danger me-2" onclick="resetConstraints()">
+                            <i class="fas fa-undo me-2"></i>편집 취소
+                        </button>
+                        <a href="{{ url_for('data_review') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>돌아가기
+                        </a>
+                    </div>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>과목 조건 설정</strong><br>
+                    특정 과목이 특정 시험 시간에 배정되지 않도록 제약 조건을 설정할 수 있습니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- 로딩 스피너 -->
+        <div id="loadingSpinner" class="loading-spinner text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">로딩 중...</span>
+            </div>
+            <p class="mt-3">데이터를 불러오는 중...</p>
+        </div>
+
+        <!-- 제약 조건 추가 폼 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-plus me-2"></i>
+                            새로운 제약 조건 추가
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="subjectSearchableSelect" class="form-label">과목 선택</label>
+                                <div class="searchable-select" id="subjectSearchableSelect">
+                                    <input type="text" class="select-input" id="subjectSearchInput" 
+                                           placeholder="과목을 선택하세요" onclick="openSubjectDropdown()" 
+                                           onfocus="openSubjectDropdown()">
+                                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                                    <div class="dropdown-menu-custom" id="subjectDropdownMenu">
+                                        <div id="subjectDropdownList"></div>
+                                    </div>
+                                </div>
+                            </div>
+                                                         <div class="col-md-6">
+                                 <label class="form-label">제약 조건 관리</label>
+                                 <div class="d-flex gap-2 mb-2">
+                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllTimeSlots()">
+                                         <i class="fas fa-times me-1"></i>선택된 과목 전체 해제
+                                     </button>
+                                 </div>
+                             </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">제한할 시험 시간들</label>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm" id="timeSlotTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" style="min-width: 80px;">교시</th>
+                                            <!-- 날짜 헤더는 JavaScript로 동적 생성 -->
+                                        </tr>
+                                    </thead>
+                                    <tbody id="timeSlotTableBody">
+                                        <tr>
+                                            <td class="text-center text-muted">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                과목을 먼저 선택해주세요
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+
+                        
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 설정된 제약 조건 목록 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            설정된 제약 조건 목록
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="constraintsList">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                <p>아직 설정된 제약 조건이 없습니다.</p>
+                                <p class="small">위의 폼에서 과목과 시험 시간을 선택하여 제약 조건을 추가해보세요.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 전역 변수
+let subjects = [];
+let timeSlots = [];
+let constraints = {};
+let examInfo = null; // 시험 정보 추가
+let selectedSubject = ''; // 선택된 과목
+let currentHighlightedIndex = -1; // 현재 하이라이트된 아이템 인덱스
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    loadData();
+    
+    // 외부 클릭 시 드롭다운 닫기
+    document.addEventListener('click', function(e) {
+        const searchableSelect = document.getElementById('subjectSearchableSelect');
+        if (searchableSelect && !searchableSelect.contains(e.target)) {
+            closeSubjectDropdown();
+        }
+    });
+});
+
+// 시험 정보 로드
+async function loadExamInfo() {
+    try {
+        console.log('Loading exam info from /uploads/custom_exam_info.json');
+        const response = await fetch('/uploads/custom_exam_info.json');
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (response.ok) {
+            examInfo = await response.json();
+            console.log('Exam info loaded successfully:', examInfo);
+            console.log('시험날짜 keys:', examInfo.시험날짜 ? Object.keys(examInfo.시험날짜) : 'undefined');
+            console.log('date_periods keys:', examInfo.date_periods ? Object.keys(examInfo.date_periods) : 'undefined');
+        } else {
+            console.warn('Failed to load exam info, response not ok. Status:', response.status);
+            examInfo = null;
+        }
+    } catch (error) {
+        console.warn('Error loading exam info, using default dates:', error);
+        examInfo = null;
+    }
+}
+
+// 데이터 로드
+async function loadData() {
+    showLoading(true);
+    
+    try {
+        const response = await fetch('/api/subject-constraints-data');
+        const data = await response.json();
+        
+        if (data.success) {
+            subjects = data.subjects;
+            timeSlots = data.time_slots;
+            constraints = data.constraints;
+            
+            console.log('Data loaded successfully:');
+            console.log('subjects:', subjects);
+            console.log('timeSlots:', timeSlots);
+            console.log('constraints:', constraints);
+            
+            // 시험 정보 파일 로드
+            await loadExamInfo();
+            
+            populateSelects();
+            renderConstraints();
+            showMainContent();
+        } else {
+            if (data.error === 'no_exam_scope') {
+                showWarning('과목 정보 파일이 없습니다', 
+                    '과목 정보를 먼저 설정해주세요.', 
+                    '/exam-scope');
+            } else if (data.error === 'no_exam_info') {
+                showWarning('시험 정보 파일이 없습니다', 
+                    '시험 정보를 먼저 설정해주세요.', 
+                    '/exam-info');
+            } else {
+                showWarning('오류 발생', 
+                    data.error || '데이터 로드 중 오류가 발생했습니다.', 
+                    '/data-review');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading data:', error);
+        showWarning('오류 발생', 
+            '데이터 로드 중 오류가 발생했습니다.', 
+            '/data-review');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 경고 메시지 표시
+function showWarning(title, message, actionUrl) {
+    document.getElementById('warningTitle').textContent = title;
+    document.getElementById('warningMessage').textContent = message;
+    document.getElementById('warningAction').href = actionUrl;
+    document.getElementById('warningSection').style.display = 'block';
+    document.getElementById('mainContent').style.display = 'none';
+}
+
+// 메인 콘텐츠 표시
+function showMainContent() {
+    document.getElementById('warningSection').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+}
+
+// 로딩 표시
+function showLoading(show) {
+    document.getElementById('loadingSpinner').style.display = show ? 'block' : 'none';
+}
+
+// 셀렉트 박스 채우기
+function populateSelects() {
+    initSubjectDropdown();
+}
+
+// 과목 드롭다운 초기화
+function initSubjectDropdown() {
+    const dropdownList = document.getElementById('subjectDropdownList');
+    dropdownList.innerHTML = '';
+    
+    subjects.forEach(subject => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item-custom';
+        item.textContent = subject;
+        item.addEventListener('click', () => selectSubject(subject));
+        dropdownList.appendChild(item);
+    });
+}
+
+// 과목 선택
+function selectSubject(subject) {
+    selectedSubject = subject;
+    const searchInput = document.getElementById('subjectSearchInput');
+    searchInput.value = subject;
+    closeSubjectDropdown();
+    onSubjectChange();
+}
+
+// 과목 드롭다운 토글
+function toggleSubjectDropdown() {
+    const menu = document.getElementById('subjectDropdownMenu');
+    const isVisible = menu.style.display === 'block';
+    
+    if (isVisible) {
+        closeSubjectDropdown();
+    } else {
+        openSubjectDropdown();
+    }
+}
+
+// 과목 드롭다운 열기
+function openSubjectDropdown() {
+    const menu = document.getElementById('subjectDropdownMenu');
+    const searchInput = document.getElementById('subjectSearchInput');
+    
+    menu.style.display = 'block';
+    searchInput.focus();
+    currentHighlightedIndex = -1; // 하이라이트 초기화
+    
+    // 검색 기능 활성화
+    searchInput.oninput = function() {
+        filterSubjects(this.value);
+        currentHighlightedIndex = -1; // 검색 시 하이라이트 초기화
+        clearHighlight();
+    };
+    
+    // 키보드 이벤트 리스너 추가
+    searchInput.onkeydown = function(e) {
+        handleKeyboardNavigation(e);
+    };
+}
+
+// 과목 드롭다운 닫기
+function closeSubjectDropdown() {
+    const menu = document.getElementById('subjectDropdownMenu');
+    const searchInput = document.getElementById('subjectSearchInput');
+    
+    menu.style.display = 'none';
+    searchInput.oninput = null;
+    searchInput.onkeydown = null;
+    currentHighlightedIndex = -1;
+}
+
+// 과목 필터링
+function filterSubjects(searchTerm) {
+    const dropdownList = document.getElementById('subjectDropdownList');
+    const filteredSubjects = subjects.filter(subject => 
+        subject.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    dropdownList.innerHTML = '';
+    
+    if (filteredSubjects.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.className = 'no-results';
+        noResults.textContent = '검색 결과가 없습니다';
+        dropdownList.appendChild(noResults);
+    } else {
+        filteredSubjects.forEach(subject => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item-custom';
+            item.textContent = subject;
+            item.addEventListener('click', () => selectSubject(subject));
+            dropdownList.appendChild(item);
+        });
+    }
+}
+
+// 키보드 네비게이션 처리
+function handleKeyboardNavigation(e) {
+    const items = document.querySelectorAll('#subjectDropdownList .dropdown-item-custom:not(.no-results)');
+    
+    if (items.length === 0) return;
+    
+    switch(e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            currentHighlightedIndex = Math.min(currentHighlightedIndex + 1, items.length - 1);
+            updateHighlight(items);
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            currentHighlightedIndex = Math.max(currentHighlightedIndex - 1, 0);
+            updateHighlight(items);
+            break;
+        case 'Enter':
+            e.preventDefault();
+            if (currentHighlightedIndex >= 0 && currentHighlightedIndex < items.length) {
+                const selectedText = items[currentHighlightedIndex].textContent;
+                selectSubject(selectedText);
+            }
+            break;
+        case 'Escape':
+            e.preventDefault();
+            closeSubjectDropdown();
+            break;
+    }
+}
+
+// 하이라이트 업데이트
+function updateHighlight(items) {
+    clearHighlight();
+    if (currentHighlightedIndex >= 0 && currentHighlightedIndex < items.length) {
+        items[currentHighlightedIndex].classList.add('highlighted');
+        items[currentHighlightedIndex].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+// 하이라이트 제거
+function clearHighlight() {
+    const items = document.querySelectorAll('#subjectDropdownList .dropdown-item-custom');
+    items.forEach(item => item.classList.remove('highlighted'));
+}
+
+// 제약 조건 목록 렌더링
+function renderConstraints() {
+    const constraintsList = document.getElementById('constraintsList');
+    
+    if (Object.keys(constraints).length === 0) {
+        constraintsList.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <p>아직 설정된 제약 조건이 없습니다.</p>
+                <p class="small">위의 폼에서 과목과 시험 시간을 선택하여 제약 조건을 추가해보세요.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    
+    // 과목명으로 정렬하고, 제약 조건이 있는 과목만 필터링
+    const sortedSubjects = Object.entries(constraints)
+        .filter(([subject, timeSlotConstraints]) => Object.keys(timeSlotConstraints).length > 0)
+        .sort(([subjectA], [subjectB]) => subjectA.localeCompare(subjectB, 'ko'));
+    
+    for (const [subject, timeSlotConstraints] of sortedSubjects) {
+        // 제약 조건을 시간순으로 정렬 (제1일 1교시, 제1일 2교시, 제2일 1교시 순)
+        const sortedTimeSlots = Object.keys(timeSlotConstraints).sort((a, b) => {
+            const matchA = a.match(/제(\d+)일_(\d+)교시/);
+            const matchB = b.match(/제(\d+)일_(\d+)교시/);
+            
+            if (matchA && matchB) {
+                const dayA = parseInt(matchA[1]);
+                const periodA = parseInt(matchA[2]);
+                const dayB = parseInt(matchB[1]);
+                const periodB = parseInt(matchB[2]);
+                
+                if (dayA !== dayB) return dayA - dayB;
+                return periodA - periodB;
+            }
+            return a.localeCompare(b, 'ko');
+        });
+        
+        // 과목별로 한 줄에 표시
+        const timeSlotBadges = sortedTimeSlots.map(timeSlot => {
+            // "제X일_X교시" 형태에서 "제X일 X교시"로 변환 (언더스코어 제거)
+            const displayText = timeSlot.replace('_', ' ');
+            return `<span class="time-slot-badge me-1">${displayText}</span>`;
+        }).join('');
+        
+        html += `
+            <div class="constraint-item">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="subject-badge me-2">${subject}</span>
+                    <div class="d-flex flex-wrap">
+                        ${timeSlotBadges}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    constraintsList.innerHTML = html;
+}
+
+
+
+// 제약 조건 초기화
+async function resetConstraints() {
+    if (!confirm('모든 제약 조건을 원본 상태로 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/reset-subject-constraints', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            constraints = {};
+            renderConstraints();
+            alert('제약 조건이 원본 상태로 초기화되었습니다.');
+        } else {
+            alert('제약 조건 초기화에 실패했습니다: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error resetting constraints:', error);
+        alert('제약 조건 초기화 중 오류가 발생했습니다.');
+    }
+}
+
+
+
+// 일괄 추가 모드 관련 함수들
+
+// 과목 선택 시 호출
+function onSubjectChange() {
+    const subject = selectedSubject;
+    const timeSlotTable = document.getElementById('timeSlotTable');
+    const timeSlotTableBody = document.getElementById('timeSlotTableBody');
+    
+    console.log('onSubjectChange called with subject:', subject);
+    console.log('timeSlots:', timeSlots);
+    console.log('constraints:', constraints);
+    
+    if (!subject) {
+        timeSlotTableBody.innerHTML = `
+            <tr>
+                <td class="text-center text-muted">
+                    <i class="fas fa-info-circle me-2"></i>
+                    과목을 먼저 선택해주세요
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // 시험 시간표 형태의 그리드 생성
+    try {
+        renderTimeSlotGrid(subject);
+    } catch (error) {
+        console.error('Error rendering time slot grid:', error);
+        timeSlotTableBody.innerHTML = `
+            <tr>
+                <td class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    그리드 생성 중 오류가 발생했습니다: ${error.message}
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// 시험 시간표 그리드 렌더링
+function renderTimeSlotGrid(subject) {
+    console.log('renderTimeSlotGrid called with subject:', subject);
+    
+    const thead = document.querySelector('#timeSlotTable thead tr');
+    const tbody = document.getElementById('timeSlotTableBody');
+    
+    if (!thead || !tbody) {
+        console.error('Table elements not found');
+        return;
+    }
+    
+    // 기존 헤더 초기화 (교시 헤더 제외)
+    const periodHeader = thead.querySelector('th:first-child');
+    if (!periodHeader) {
+        console.error('Period header not found');
+        return;
+    }
+    
+    thead.innerHTML = '';
+    thead.appendChild(periodHeader);
+    
+    // 날짜별 헤더 생성
+    const dateGroups = groupTimeSlotsByDate();
+    console.log('Date groups:', dateGroups);
+    
+    if (dateGroups.length === 0) {
+        console.log('No date groups found, showing fallback');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="1" class="text-center text-muted">
+                    <i class="fas fa-info-circle me-2"></i>
+                    사용 가능한 시험 시간이 없습니다
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    dateGroups.forEach(dateGroup => {
+        const th = document.createElement('th');
+        th.className = 'text-center';
+        th.style.minWidth = '120px';
+        th.innerHTML = `
+            <div class="d-flex flex-column align-items-center">
+                <div class="fw-bold text-primary">${dateGroup.dateLabel}</div>
+                <small class="text-muted">${dateGroup.date}</small>
+            </div>
+        `;
+        thead.appendChild(th);
+    });
+    
+    // 교시별 행 생성
+    tbody.innerHTML = '';
+    const periodGroups = groupTimeSlotsByPeriod();
+    console.log('Period groups:', periodGroups);
+    
+    if (periodGroups.length === 0) {
+        console.log('No period groups found');
+        return;
+    }
+    
+    periodGroups.forEach(periodGroup => {
+        const tr = document.createElement('tr');
+        
+        // 교시 헤더
+        const periodTh = document.createElement('th');
+        periodTh.className = 'text-center fw-bold';
+        periodTh.textContent = `${periodGroup.period}교시`;
+        tr.appendChild(periodTh);
+        
+        // 각 날짜별 셀 생성
+        dateGroups.forEach(dateGroup => {
+            const td = document.createElement('td');
+            td.className = 'text-center align-middle';
+            td.style.height = '80px';
+            
+            // 해당 날짜와 교시의 시간대 찾기 (표준 형식)
+            const timeSlot = `${dateGroup.dateLabel}_${periodGroup.period}교시`;
+            
+            // 실제 timeSlots 배열에서 정확한 시간대 찾기
+            const actualTimeSlot = timeSlots.find(slot => 
+                slot === timeSlot
+            );
+            
+            const isChecked = constraints[subject] && constraints[subject][actualTimeSlot || timeSlot];
+            
+            // 시간 정보와 체크박스 생성
+            const timeInfo = getTimeSlotInfo(timeSlot);
+            if (timeInfo) {
+                td.innerHTML = `
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="mb-2">
+                            <small class="text-muted">${timeInfo.startTime}~${timeInfo.endTime}</small>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                id="grid_${(actualTimeSlot || timeSlot).replace(/[^a-zA-Z0-9]/g, '_')}" 
+                                value="${actualTimeSlot || timeSlot}" 
+                                ${isChecked ? 'checked' : ''}
+                                onchange="handleCheckboxChange(this, '${subject}', '${actualTimeSlot || timeSlot}')">
+                            <label class="form-check-label" 
+                                for="grid_${(actualTimeSlot || timeSlot).replace(/[^a-zA-Z0-9]/g, '_')}">
+                                배정 금지하기
+                            </label>
+                        </div>
+                    </div>
+                `;
+            } else {
+                td.innerHTML = '<span class="text-muted">-</span>';
+            }
+            
+            tr.appendChild(td);
+        });
+        
+        tbody.appendChild(tr);
+    });
+    
+    console.log('Grid rendering completed');
+}
+
+// 시간대를 날짜별로 그룹화
+function groupTimeSlotsByDate() {
+    console.log('groupTimeSlotsByDate called with timeSlots:', timeSlots);
+    
+    const dateGroups = [];
+    const dateMap = new Map();
+    
+    if (!timeSlots || timeSlots.length === 0) {
+        console.log('No timeSlots available');
+        return dateGroups;
+    }
+    
+    timeSlots.forEach((slot, index) => {
+        console.log(`Processing slot ${index}: "${slot}"`);
+        // "제4일_2교시" 형태에 맞는 정규식
+        const match = slot.match(/제(\d+)일_(\d+)교시/);
+        console.log('Regex match result:', match);
+        
+        if (match) {
+            const day = match[1];
+            const period = match[2];
+            const dateLabel = `제${day}일`;
+            
+            if (!dateMap.has(dateLabel)) {
+                dateMap.set(dateLabel, {
+                    dateLabel: dateLabel,
+                    date: getFormattedDate(parseInt(day)), // 실제 날짜 계산
+                    periods: []
+                });
+            }
+            dateMap.get(dateLabel).periods.push(period);
+        } else {
+            console.log(`Slot "${slot}" does not match expected pattern`);
+        }
+    });
+    
+    const result = Array.from(dateMap.values()).sort((a, b) => {
+        const dayA = parseInt(a.dateLabel.replace(/[^0-9]/g, ''));
+        const dayB = parseInt(b.dateLabel.replace(/[^0-9]/g, ''));
+        return dayA - dayB;
+    });
+    
+    console.log('Final date groups result:', result);
+    return result;
+}
+
+// 시간대를 교시별로 그룹화
+function groupTimeSlotsByPeriod() {
+    console.log('groupTimeSlotsByPeriod called with timeSlots:', timeSlots);
+    
+    const periodGroups = [];
+    const periodMap = new Map();
+    
+    if (!timeSlots || timeSlots.length === 0) {
+        console.log('No timeSlots available for period grouping');
+        return periodGroups;
+    }
+    
+    timeSlots.forEach((slot, index) => {
+        console.log(`Processing slot ${index} for period grouping: "${slot}"`);
+        // "제4일_2교시" 형태에 맞는 정규식
+        const match = slot.match(/제(\d+)일_(\d+)교시/);
+        console.log('Period regex match result:', match);
+        
+        if (match) {
+            const day = match[1];
+            const period = match[2];
+            
+            if (!periodMap.has(period)) {
+                periodMap.set(period, {
+                    period: period,
+                    days: []
+                });
+            }
+            periodMap.get(period).days.push(day);
+        } else {
+            console.log(`Slot "${slot}" does not match expected pattern for period grouping`);
+        }
+    });
+    
+    const result = Array.from(periodMap.values()).sort((a, b) => parseInt(a.period) - parseInt(b.period));
+    console.log('Final period groups result:', result);
+    return result;
+}
+
+// 시간대 정보 가져오기 (examInfo에서 조회)
+function getTimeSlotInfo(timeSlot) {
+    // "제4일_2교시" 형태에서 날짜와 교시 추출
+    const basicMatch = timeSlot.match(/제(\d+)일_(\d+)교시/);
+    if (basicMatch && examInfo && examInfo.date_periods) {
+        const day = basicMatch[1];
+        const period = basicMatch[2];
+        
+        if (examInfo.date_periods[day] && examInfo.date_periods[day][period]) {
+            const periodInfo = examInfo.date_periods[day][period];
+            return {
+                startTime: periodInfo.start_time,
+                endTime: periodInfo.end_time,
+                duration: periodInfo.duration
+            };
+        }
+    }
+    
+    // fallback: 기본값 사용
+    if (basicMatch) {
+        const period = parseInt(basicMatch[2]);
+        const startTimes = ['8:30', '10:00', '13:00', '14:30'];
+        const durations = [80, 80, 80, 80];
+        
+        if (period <= startTimes.length) {
+            const startTime = startTimes[period - 1];
+            const duration = durations[period - 1];
+            const endTime = calculateEndTime(startTime, duration);
+            
+            return {
+                startTime: startTime,
+                endTime: endTime,
+                duration: duration
+            };
+        }
+    }
+    return null;
+}
+
+// 날짜 포맷팅 함수
+function getFormattedDate(dayNumber) {
+    console.log('getFormattedDate called with dayNumber:', dayNumber);
+    console.log('examInfo:', examInfo);
+    
+    // examInfo에서 실제 날짜 가져오기
+    if (examInfo && examInfo.시험날짜) {
+        const dateKey = `제${dayNumber}일`;
+        console.log('Looking for dateKey:', dateKey);
+        console.log('Available keys in examInfo.시험날짜:', Object.keys(examInfo.시험날짜));
+        
+        const dateString = examInfo.시험날짜[dateKey];
+        console.log('Found dateString:', dateString);
+        
+        if (dateString) {
+            const date = new Date(dateString);
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            const dayName = dayNames[date.getDay()];
+            const result = `${month}-${day.toString().padStart(2, '0')}(${dayName})`;
+            console.log('Returning formatted date from examInfo:', result);
+            return result;
+        }
+    }
+    
+    // fallback: 기본 날짜 계산 (2024년 8월 20일부터 시작)
+    console.log('Using fallback date calculation');
+    const baseDate = new Date(2024, 7, 20); // 8월은 7 (0-based)
+    const targetDate = new Date(baseDate);
+    targetDate.setDate(baseDate.getDate() + (dayNumber - 1));
+    
+    const month = targetDate.getMonth() + 1;
+    const date = targetDate.getDate();
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayName = dayNames[targetDate.getDay()];
+    const fallbackResult = `${month}-${date.toString().padStart(2, '0')}(${dayName})`;
+    console.log('Returning fallback date:', fallbackResult);
+    return fallbackResult;
+}
+
+// 종료 시간 계산
+function calculateEndTime(startTime, durationMinutes) {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + durationMinutes;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMinutes = totalMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+}
+
+
+
+// 전체 시간대 해제
+async function clearAllTimeSlots() {
+    const subject = document.getElementById('batchSubjectSelect').value;
+    if (!subject) {
+        alert('과목을 먼저 선택해주세요.');
+        return;
+    }
+    
+    if (!confirm(`"${subject}" 과목의 모든 제약 조건을 해제하시겠습니까?`)) {
+        return;
+    }
+    
+    try {
+        // 현재 과목의 모든 제약 조건 삭제
+        const subjectConstraints = constraints[subject] || {};
+        const timeSlotsToDelete = Object.keys(subjectConstraints);
+        
+        if (timeSlotsToDelete.length === 0) {
+            alert('해제할 제약 조건이 없습니다.');
+            return;
+        }
+        
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (const timeSlot of timeSlotsToDelete) {
+            try {
+                const response = await fetch('/api/delete-subject-constraint', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        subject: subject,
+                        time_slot: timeSlot
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 로컬 데이터에서 제거
+                    delete constraints[subject][timeSlot];
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error(`Failed to delete constraint for ${timeSlot}:`, data.error);
+                }
+            } catch (error) {
+                failCount++;
+                console.error(`Error deleting constraint for ${timeSlot}:`, error);
+            }
+        }
+        
+        // 체크박스 모두 해제
+        const checkboxes = document.querySelectorAll('#timeSlotTable input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // UI 업데이트
+        renderConstraints();
+        
+        // 결과 표시
+        if (failCount === 0) {
+            alert(`모든 제약 조건이 성공적으로 해제되었습니다! (${successCount}개)`);
+        } else {
+            alert(`제약 조건 해제 완료: ${successCount}개 성공, ${failCount}개 실패`);
+        }
+        
+    } catch (error) {
+        console.error('Error clearing all time slots:', error);
+        alert('전체 해제 중 오류가 발생했습니다.');
+    }
+}
+
+
+
+// 체크박스 변경 시 자동 저장
+async function handleCheckboxChange(checkbox, subject, timeSlot) {
+    if (checkbox.checked) {
+        // 체크된 경우: 제약 조건 추가
+        try {
+            const response = await fetch('/api/add-subject-constraint', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    subject: subject,
+                    time_slot: timeSlot
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // 로컬 데이터 업데이트
+                if (!constraints[subject]) {
+                    constraints[subject] = {};
+                }
+                constraints[subject][timeSlot] = {
+                    created_at: new Date().toISOString()
+                };
+                
+                // UI 즉시 업데이트 (제약 조건 목록만)
+                renderConstraints();
+                
+                console.log(`제약 조건 추가됨: ${subject} - ${timeSlot}`);
+            } else {
+                console.error('제약 조건 추가 실패:', data.error);
+                checkbox.checked = false; // 체크 해제
+            }
+        } catch (error) {
+            console.error('제약 조건 추가 중 오류:', error);
+            checkbox.checked = false; // 체크 해제
+        }
+    } else {
+        // 체크 해제된 경우: 제약 조건 삭제
+        try {
+            const response = await fetch('/api/delete-subject-constraint', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    subject: subject,
+                    time_slot: timeSlot
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // 로컬 데이터 업데이트
+                if (constraints[subject] && constraints[subject][timeSlot]) {
+                    delete constraints[subject][timeSlot];
+                }
+                
+                // UI 즉시 업데이트 (제약 조건 목록만)
+                renderConstraints();
+                
+                console.log(`제약 조건 삭제됨: ${subject} - ${timeSlot}`);
+            } else {
+                console.error('제약 조건 삭제 실패:', data.error);
+                checkbox.checked = true; // 체크 상태로 복원
+            }
+        } catch (error) {
+            console.error('제약 조건 삭제 중 오류:', error);
+            checkbox.checked = true; // 체크 상태로 복원
+        }
+    }
+}
+
+
+
+
+
+
+</script>
+{% endblock %}

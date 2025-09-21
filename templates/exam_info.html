@@ -1,15 +1,18 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>시험 정보 편집 - 시험 시간표 배정 시스템</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
+{% extends "base.html" %}
+
+{% block title %}시험 정보 편집{% endblock %}
+
+{% block extra_css %}
+<style>
         .table th {
             background-color: #f8f9fa;
             font-weight: 600;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .table td {
+            text-align: center;
+            vertical-align: middle;
         }
         .editable-cell {
             cursor: pointer;
@@ -25,113 +28,153 @@
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
         }
-        .time-slot {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 0.375rem;
-            padding: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-        .time-slot-header {
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.5rem;
-        }
-        .time-input {
-            width: 80px;
-            display: inline-block;
-        }
-        .date-section {
-            background-color: #e3f2fd;
-            border: 1px solid #bbdefb;
-            border-radius: 0.375rem;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
         .date-header {
             font-weight: 600;
             color: #1976d2;
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
+            min-width: 120px;
         }
-        .period-row {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 0.375rem;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-        }
-        .period-label {
+        .period-header {
             font-weight: 600;
             color: #495057;
+            min-width: 80px;
         }
-    </style>
-</head>
-<body>
-    <div class="container-fluid mt-4">
-        <!-- 헤더 -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h3><i class="fas fa-calendar-alt me-2"></i>시험 정보 편집</h3>
-                    <div>
-                        <button class="btn btn-outline-secondary me-2" onclick="resetExamInfo()">
-                            <i class="fas fa-undo me-2"></i>시험 정보 초기화
-                        </button>
-                        <a href="{{ url_for('data_review') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-arrow-left me-2"></i>돌아가기
-                        </a>
-                    </div>
-                </div>
-                <hr>
+        .time-input {
+            width: 120px;
+            display: inline-block;
+            text-align: center;
+        }
+        .duration-input {
+            width: 60px;
+            display: inline-block;
+            text-align: center;
+        }
+        .end-time-display {
+            font-weight: 500;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .add-row-btn {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        .add-row-btn:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+            color: white;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+            color: white;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+                 .date-input {
+             width: 140px;
+             text-align: center;
+         }
+         .day-of-week {
+             font-weight: 600;
+             color: #1976d2;
+             font-size: 0.9rem;
+             margin-top: 2px;
+         }
+        .invalid-date {
+            border-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .valid-date {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3><i class="fas fa-calendar-alt me-2"></i>시험 정보</h3>
+            <div>
+                <button class="btn btn-danger me-2" onclick="resetExamInfo()">
+                    <i class="fas fa-undo me-2"></i>편집 취소
+                </button>
+                <a href="{{ url_for('data_review') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>돌아가기
+                </a>
             </div>
         </div>
 
-        <!-- 기본 정보 -->
+        <!-- 통합 시험 시간표 -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="fas fa-info-circle me-2"></i>기본 정보
+                            <i class="fas fa-info-circle me-2"></i>시험 기본 정보
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <label for="examDays" class="form-label">시험 일수</label>
-                                <input type="number" id="examDays" class="form-control" min="1" max="10" onchange="updateExamInfo('exam_days', this.value)">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="periodsPerDay" class="form-label">일일 교시 수</label>
-                                <input type="number" id="periodsPerDay" class="form-control" min="1" max="8" onchange="updateExamInfo('periods_per_day', this.value)">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="examStartDate" class="form-label">시험 시작일</label>
-                                <input type="date" id="examStartDate" class="form-control" onchange="updateExamInfo('start_date', this.value)">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="examEndDate" class="form-label">시험 종료일</label>
-                                <input type="date" id="examEndDate" class="form-control" onchange="updateExamInfo('end_date', this.value)">
-                            </div>
-                        </div>
+                                             <div class="row">
+                         <div class="col-md-4">
+                             <label for="examYear" class="form-label">학년도</label>
+                             <input type="number" class="form-control" id="examYear" 
+                                    min="2020" max="9999" value="" 
+                                    onchange="updateExamInfo('학년도', this.value)"
+                                    placeholder="예: 2024">
+                         </div>
+                         <div class="col-md-4">
+                             <label for="examSemester" class="form-label">학기</label>
+                             <select class="form-control" id="examSemester" 
+                                     onchange="updateExamInfo('학기', this.value)">
+                                 <option value="">선택하세요</option>
+                                 <option value="1">1학기</option>
+                                 <option value="2">2학기</option>
+                             </select>
+                         </div>
+                         <div class="col-md-4">
+                             <label for="examType" class="form-label">고사종류</label>
+                             <select class="form-control" id="examType" 
+                                     onchange="updateExamInfo('고사종류', this.value)">
+                                 <option value="">선택하세요</option>
+                                 <option value="중간고사">중간고사</option>
+                                 <option value="기말고사">기말고사</option>
+                             </select>
+                         </div>
+                     </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 날짜별 교시 시간 설정 -->
+        <!-- 통합 시험 시간표 -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="fas fa-clock me-2"></i>날짜별 교시 시간 설정
+                            <i class="fas fa-clock me-2"></i>시험 시간표 설정
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div id="datePeriodTimeSlots">
-                            <!-- 날짜별 교시 시간 슬롯이 여기에 동적으로 생성됩니다 -->
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="examScheduleTable">
+                                <thead>
+                                    <tr>
+                                        <th class="period-header">교시</th>
+                                        <!-- 날짜 헤더가 동적으로 생성됩니다 -->
+                                    </tr>
+                                </thead>
+                                <tbody id="examScheduleBody">
+                                    <!-- 교시 행이 동적으로 생성됩니다 -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -193,6 +236,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let examInfoData = {};
+        let dates = [];
+        let periods = [];
 
         // 페이지 로드 시 데이터 로드
         document.addEventListener('DOMContentLoaded', function() {
@@ -202,97 +247,839 @@
         // 시험 정보 데이터 로드
         async function loadExamInfoData() {
             try {
+                // 먼저 설정 데이터 로드
+                const configResponse = await fetch('/api/exam-info-config');
+                const configData = await configResponse.json();
+                
+                if (configData.success) {
+                    // 전역 설정 변수에 저장
+                    window.examConfig = configData.data;
+                }
+                
+                // 시험 정보 데이터 로드
                 const response = await fetch('/api/exam-info-data');
                 const data = await response.json();
                 
                 if (data.success) {
                     examInfoData = data.data;
-                    renderExamInfo();
-                } else {
-                    showAlert('오류', data.error, 'error');
-                }
-            } catch (error) {
-                showAlert('오류', '데이터 로드 중 오류가 발생했습니다.', 'error');
-                console.error('Error loading exam info data:', error);
-            }
+                    initializeScheduleTable();
+                                 } else {
+                     showInlineAlert('오류', data.error, 'error');
+                 }
+             } catch (error) {
+                 showInlineAlert('오류', '데이터 로드 중 오류가 발생했습니다.', 'error');
+                 console.error('Error loading exam info data:', error);
+             }
         }
 
-        // 시험 정보 렌더링
-        function renderExamInfo() {
-            // 기본 정보 설정
-            document.getElementById('examDays').value = examInfoData.exam_days || 3;
-            document.getElementById('periodsPerDay').value = examInfoData.periods_per_day || 4;
-            document.getElementById('examStartDate').value = examInfoData.start_date || '';
-            document.getElementById('examEndDate').value = examInfoData.end_date || '';
+                 // 시험 시간표 테이블 초기화
+        function initializeScheduleTable() {
+            // 기본 데이터 설정
+            if (!examInfoData.date_periods) {
+                examInfoData.date_periods = {};
+            }
 
-            // 날짜별 교시 시간 설정 렌더링
-            renderDatePeriodTimeSlots();
+            // 시험 기본 정보 설정
+            document.getElementById('examYear').value = examInfoData.학년도 || '';
+            document.getElementById('examSemester').value = examInfoData.학기 || '';
+            document.getElementById('examType').value = examInfoData.고사종류 || '';
 
-            // 요약 정보 업데이트
+            // 날짜 초기화 (시험날짜 데이터에서 추출)
+            dates = [];
+            
+            if (examInfoData.시험날짜 && Object.keys(examInfoData.시험날짜).length > 0) {
+                // 시험날짜 데이터에서 날짜 추출
+                const dayLabels = Object.keys(examInfoData.시험날짜).sort();
+                dates = dayLabels.map(dayLabel => {
+                    const dayNumber = parseInt(dayLabel.replace('제', '').replace('일', ''));
+                    const dateString = examInfoData.시험날짜[dayLabel];
+                    
+                                         // 날짜 문자열을 YYYY-MM-DD 형식으로 변환
+                     let formattedDate = ''; // 기본값을 빈 문자열로 설정
+                     if (dateString && dateString.trim() && dateString !== 'nan' && dateString !== 'NaN') {
+                         // 이미 YYYY-MM-DD 형식인 경우
+                         if (dateString.includes('-')) {
+                             // "2024-09-30 00:00:00" 형식에서 날짜 부분만 추출
+                             const dateMatch = dateString.match(/(\d{4}-\d{2}-\d{2})/);
+                             if (dateMatch) {
+                                 formattedDate = dateMatch[1];
+                             }
+                         } else {
+                             // "6월 14일" 형식을 "2024-06-14" 형식으로 변환
+                             const match = dateString.match(/(\d+)월\s*(\d+)일/);
+                             if (match) {
+                                 const month = parseInt(match[1]);
+                                 const day = parseInt(match[2]);
+                                 formattedDate = `2024-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                             }
+                         }
+                     }
+                     // nan이거나 빈 값인 경우 formattedDate는 빈 문자열로 유지
+                    
+                    return {
+                        day: dayNumber,
+                        date: formattedDate
+                    };
+                });
+            } else if (examInfoData.date_periods && Object.keys(examInfoData.date_periods).length > 0) {
+                // date_periods에서 날짜 추출 (기존 로직)
+                const dayNumbers = Object.keys(examInfoData.date_periods).map(Number).sort((a, b) => a - b);
+                dates = dayNumbers.map(day => ({
+                    day: day,
+                    date: `2024-09-${String(day + 29).padStart(2, '0')}` // 기본 날짜 설정
+                }));
+            } else {
+                // 기본 날짜가 없으면 제1일만 추가 (현재 날짜 기준)
+                const today = new Date();
+                const nextWeekday = getNextWeekday(today.toISOString().split('T')[0]);
+                dates.push({
+                    day: 1,
+                    date: nextWeekday
+                });
+            }
+
+            // 교시 초기화 - 실제 데이터에 있는 교시만 사용
+            periods = [];
+            if (examInfoData.date_periods && Object.keys(examInfoData.date_periods).length > 0) {
+                // 기존 데이터가 있으면 실제 존재하는 교시만 사용
+                const allPeriods = new Set();
+                Object.values(examInfoData.date_periods).forEach(day => {
+                    Object.keys(day).forEach(period => {
+                        allPeriods.add(parseInt(period));
+                    });
+                });
+                
+                // 교시 번호 순서대로 정렬 (삭제된 교시 제외)
+                periods = Array.from(allPeriods).sort((a, b) => a - b);
+                
+                // 기존 교시 데이터의 end_time이 없으면 계산해서 설정
+                dates.forEach(dateInfo => {
+                    if (examInfoData.date_periods[dateInfo.day]) {
+                        periods.forEach(period => {
+                            if (examInfoData.date_periods[dateInfo.day][period] && 
+                                !examInfoData.date_periods[dateInfo.day][period].end_time) {
+                                const periodData = examInfoData.date_periods[dateInfo.day][period];
+                                const startTime = periodData.start_time || getDefaultStartTime(period);
+                                const duration = periodData.duration || (window.examConfig ? window.examConfig.default_duration : 50);
+                                examInfoData.date_periods[dateInfo.day][period].end_time = calculateEndTime(startTime, duration);
+                            }
+                        });
+                    }
+                });
+            } else {
+                // 기본값: 4교시
+                for (let i = 1; i <= 4; i++) {
+                    periods.push(i);
+                }
+                
+                // 기본 교시 데이터 생성 및 end_time 계산
+                dates.forEach(dateInfo => {
+                    if (!examInfoData.date_periods[dateInfo.day]) {
+                        examInfoData.date_periods[dateInfo.day] = {};
+                    }
+                    
+                    for (let period = 1; period <= 4; period++) {
+                        if (!examInfoData.date_periods[dateInfo.day][period]) {
+                            examInfoData.date_periods[dateInfo.day][period] = {
+                                start_time: getDefaultStartTime(period),
+                                duration: window.examConfig ? window.examConfig.default_duration : 50
+                            };
+                        }
+                        
+                        // end_time이 없으면 계산해서 설정
+                        if (!examInfoData.date_periods[dateInfo.day][period].end_time) {
+                            const periodData = examInfoData.date_periods[dateInfo.day][period];
+                            const startTime = periodData.start_time || getDefaultStartTime(period);
+                            const duration = periodData.duration || 50;
+                            examInfoData.date_periods[dateInfo.day][period].end_time = calculateEndTime(startTime, duration);
+                        }
+                    }
+                });
+            }
+
+            renderScheduleTable();
             updateSummaryInfo();
         }
 
-        // 날짜별 교시 시간 슬롯 렌더링
-        function renderDatePeriodTimeSlots() {
-            const container = document.getElementById('datePeriodTimeSlots');
-            const examDays = parseInt(document.getElementById('examDays').value) || 3;
-            const periodsPerDay = parseInt(document.getElementById('periodsPerDay').value) || 4;
+        // 시험 시간표 테이블 렌더링
+        function renderScheduleTable() {
+            renderTableHeaders();
+            renderTableBody();
+        }
+
+        // 테이블 헤더 렌더링
+        function renderTableHeaders() {
+            const thead = document.querySelector('#examScheduleTable thead tr');
+            thead.innerHTML = '<th class="period-header">교시</th>';
             
-            container.innerHTML = '';
+                         dates.forEach((dateInfo, index) => {
+                 const th = document.createElement('th');
+                 th.className = 'date-header';
+                 const dayOfWeek = getDayOfWeek(dateInfo.date);
+                 const isDateValid = isValidDate(dateInfo.date);
+                 const isOrderValid = isDateOrderValidForIndex(index);
+                 const isThisDateValid = isDateValid && isOrderValid;
+                 
+                 th.innerHTML = `
+                     <div class="d-flex flex-column align-items-center">
+                         <div class="d-flex flex-column align-items-center">
+                             <div class="text-center">
+                                 <span>제${dateInfo.day}일</span>
+                                 ${dayOfWeek ? `<div class="day-of-week">${dayOfWeek}요일</div>` : ''}
+                             </div>
+                         </div>
+                         <div class="mb-1">
+                             <input type="date" class="form-control form-control-sm date-input ${isThisDateValid ? 'valid-date' : 'invalid-date'}" 
+                                    value="${dateInfo.date}" 
+                                    onchange="updateDate(${index}, this.value)"
+                                    title="날짜를 선택하세요">
+                         </div>
+                             ${index === dates.length - 1 ? 
+                                 `<button class="btn btn-sm delete-btn" onclick="deleteDate(${index})" title="날짜 삭제">
+                                     <i class="fas fa-trash"></i>
+                                 </button>` : ''
+                             }
+                     </div>
+                 `;
+                 thead.appendChild(th);
+             });
+
+            // 새 날짜 추가 버튼
+            const addDateTh = document.createElement('th');
+            addDateTh.className = 'text-center';
+            addDateTh.innerHTML = `
+                <button class="btn btn-sm add-row-btn" onclick="addDate()" title="새 날짜 추가">
+                    <i class="fas fa-plus"></i> 새 날짜
+                </button>
+            `;
+            thead.appendChild(addDateTh);
+        }
+
+                // 테이블 본문 렌더링
+        function renderTableBody() {
+            const tbody = document.getElementById('examScheduleBody');
+            tbody.innerHTML = '';
             
-            for (let day = 1; day <= examDays; day++) {
-                const dayLabel = `제${day}일`;
-                const dayData = examInfoData.date_periods && examInfoData.date_periods[day] ? examInfoData.date_periods[day] : {};
+            periods.forEach((period, periodIndex) => {
+                const tr = document.createElement('tr');
                 
-                const daySection = document.createElement('div');
-                daySection.className = 'date-section';
-                daySection.innerHTML = `
-                    <div class="date-header">
-                        <i class="fas fa-calendar-day me-2"></i>${dayLabel}
+                // 교시 헤더
+                const periodTh = document.createElement('th');
+                periodTh.className = 'period-header';
+                periodTh.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-center">
+                        <span class="me-2">${period}교시</span>
+                        ${periodIndex === periods.length - 1 ? 
+                            `<button class="btn btn-sm delete-btn" onclick="deletePeriod(${periodIndex})" title="교시 삭제">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''
+                        }
                     </div>
                 `;
+                tr.appendChild(periodTh);
                 
-                for (let period = 1; period <= periodsPerDay; period++) {
-                    const periodData = dayData[period] || {};
+                // 각 날짜별 시간 설정
+                dates.forEach((dateInfo) => {
+                    const td = document.createElement('td');
+                    const periodData = examInfoData.date_periods[dateInfo.day] && 
+                                     examInfoData.date_periods[dateInfo.day][period] ? 
+                                     examInfoData.date_periods[dateInfo.day][period] : {};
                     
-                    const periodRow = document.createElement('div');
-                    periodRow.className = 'period-row';
-                    periodRow.innerHTML = `
-                        <div class="row align-items-center">
-                            <div class="col-md-2">
-                                <span class="period-label">${period}교시</span>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">시작 시간</label>
-                                <input type="time" class="form-control time-input" 
-                                       value="${periodData.start_time || '09:00'}" 
-                                       onchange="updateDatePeriodTime(${day}, ${period}, 'start_time', this.value)">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">종료 시간</label>
-                                <input type="time" class="form-control time-input" 
-                                       value="${periodData.end_time || '10:00'}" 
-                                       onchange="updateDatePeriodTime(${day}, ${period}, 'end_time', this.value)">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">시험 시간 (분)</label>
-                                <input type="number" class="form-control time-input" 
-                                       value="${periodData.duration || 60}" 
-                                       min="30" max="120" 
-                                       onchange="updateDatePeriodTime(${day}, ${period}, 'duration', this.value)">
-                            </div>
-                        </div>
-                    `;
+                    const startTime = periodData.start_time || getDefaultStartTime(period);
+                    const duration = parseInt(examInfoData.date_periods[dateInfo.day][period].duration || (window.examConfig ? window.examConfig.default_duration : 50));
+                    const endTime = calculateEndTime(startTime, duration);
                     
-                    daySection.appendChild(periodRow);
+                                                              // 교시가 삭제되었는지 확인
+                     const isPeriodDeleted = periodData._deleted === true;
+                     
+                     if (isPeriodDeleted) {
+                         // 삭제된 교시: 복원 버튼 표시
+                         td.innerHTML = `
+                             <div class="d-flex flex-column align-items-center">
+                                 <div class="text-muted mb-2">
+                                     <i class="fas fa-trash text-danger"></i>
+                                     <small>삭제됨</small>
+                                 </div>
+                                 <button class="btn btn-sm btn-outline-success" 
+                                         onclick="restorePeriod(${dateInfo.day}, ${period})" 
+                                         title="교시 복원">
+                                     <i class="fas fa-undo"></i> 복원
+                                 </button>
+                             </div>
+                         `;
+                     } else {
+                                                   // 활성 교시: 시간 설정 및 삭제 버튼 표시
+                          td.innerHTML = `
+                              <div class="d-flex flex-column align-items-center">
+                                  <div class="mb-1">
+                                      <label class="form-label small mb-1">시작</label>
+                                       <input type="time" class="form-control form-control-sm time-input" 
+                                              value="${startTime}" 
+                                              onchange="updateTime(${dateInfo.day}, ${period}, 'start_time', this.value)"
+                                              step="60">
+                                  </div>
+                                  <div class="mb-1">
+                                      <label class="form-label small mb-1">시간(분)</label>
+                                      <input type="number" class="form-control form-control-sm duration-input" 
+                                             value="${duration}" 
+                                             min="30" max="120" 
+                                             onchange="updateTime(${dateInfo.day}, ${period}, 'duration', this.value)">
+                                  </div>
+                                  <div class="mb-2">
+                                      <label class="form-label small mb-1">종료</label>
+                                      <input type="time" class="form-control form-control-sm time-input" 
+                                             value="${endTime}" 
+                                             readonly
+                                             style="background-color: #f8f9fa; cursor: not-allowed;">
+                                  </div>
+                                  <button class="btn btn-sm btn-outline-danger" 
+                                          onclick="deleteSpecificPeriod(${dateInfo.day}, ${period})" 
+                                          title="이 교시만 삭제">
+                                      <i class="fas fa-times"></i> 삭제
+                                  </button>
+                              </div>
+                          `;
+                     }
+                    tr.appendChild(td);
+                });
+                
+                // 빈 셀 (새 날짜 추가 버튼과 맞춤)
+                const emptyTd = document.createElement('td');
+                emptyTd.innerHTML = '';
+                tr.appendChild(emptyTd);
+                
+                tbody.appendChild(tr);
+            });
+            
+            // 새 교시 추가 행
+            const addPeriodTr = document.createElement('tr');
+            addPeriodTr.className = 'add-period-row';
+            
+            // 새 교시 추가 버튼 셀
+            const addPeriodTh = document.createElement('th');
+            addPeriodTh.className = 'text-center';
+            addPeriodTh.innerHTML = `
+                <button class="btn btn-sm add-row-btn" onclick="addPeriod()" title="새 교시 추가">
+                    <i class="fas fa-plus"></i> 새 교시
+                </button>
+            `;
+            addPeriodTr.appendChild(addPeriodTh);
+            
+            // 빈 셀들 (날짜 수만큼)
+            dates.forEach(() => {
+                const emptyTd = document.createElement('td');
+                emptyTd.innerHTML = '';
+                addPeriodTr.appendChild(emptyTd);
+            });
+            
+            // 마지막 빈 셀 (새 날짜 추가 버튼과 맞춤)
+            const lastEmptyTd = document.createElement('td');
+            lastEmptyTd.innerHTML = '';
+            addPeriodTr.appendChild(lastEmptyTd);
+            
+            tbody.appendChild(addPeriodTr);
+        }
+
+                // 날짜 추가
+        async function addDate() {
+            // 사용되지 않은 날짜 번호 찾기
+            let newDay = 1;
+            while (dates.some(d => d.day === newDay)) {
+                newDay++;
+            }
+            
+            // 마지막 날짜의 다음 날짜를 주말을 제외하여 계산
+            let newDate;
+            if (dates.length > 0 && dates[dates.length - 1].date) {
+                newDate = getNextWeekday(dates[dates.length - 1].date);
+            } else {
+                // 기본값 (현재 날짜 기준)
+                const today = new Date();
+                newDate = today.toISOString().split('T')[0];
+            }
+            
+            // 로컬 데이터 업데이트
+            dates.push({
+                day: newDay,
+                date: newDate
+            });
+            
+            // 새로 추가된 날짜의 기본 데이터 초기화
+            if (!examInfoData.date_periods) {
+                examInfoData.date_periods = {};
+            }
+            if (!examInfoData.date_periods[newDay]) {
+                examInfoData.date_periods[newDay] = {};
+            }
+            
+                         // 기존 마지막 날의 시험 시간을 가져와서 설정
+             const lastDay = dates[dates.length - 2]; // 새로 추가된 날짜 이전 날짜
+             
+             // 각 교시에 대해 이전 날짜의 정보를 복사하거나 기본값 설정
+             periods.forEach(period => {
+                 if (lastDay && examInfoData.date_periods[lastDay.day] && 
+                     examInfoData.date_periods[lastDay.day][period] && 
+                     !examInfoData.date_periods[lastDay.day][period]._deleted) {
+                     // 이전 날짜의 교시 정보가 있고 삭제되지 않은 경우 - 완전히 복사
+                     const lastPeriodData = examInfoData.date_periods[lastDay.day][period];
+                     examInfoData.date_periods[newDay][period] = {
+                         start_time: lastPeriodData.start_time,
+                         duration: lastPeriodData.duration,
+                         end_time: lastPeriodData.end_time
+                     };
+                 } else {
+                     // 이전 날짜의 정보가 없거나 삭제된 경우 - 기본값 설정
+                     const defaultDuration = window.examConfig ? window.examConfig.default_duration : 50;
+                     examInfoData.date_periods[newDay][period] = {
+                         start_time: getDefaultStartTime(period),
+                         duration: defaultDuration,
+                         end_time: calculateEndTime(getDefaultStartTime(period), defaultDuration)
+                     };
+                 }
+             });
+            
+            // 서버에 저장
+            try {
+                const response = await fetch('/api/update-exam-info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        field: `시험날짜.제${newDay}일`,
+                        value: newDate
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('서버 저장 실패');
                 }
                 
-                container.appendChild(daySection);
+                // 각 교시 데이터도 저장
+                for (const period of periods) {
+                    await fetch('/api/update-exam-info', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            field: `date_periods.${newDay}.${period}`,
+                            value: examInfoData.date_periods[newDay][period]
+                        })
+                    });
+                }
+                
+                                     // 성공 메시지 제거 - 사용자 경험 개선
+            } catch (error) {
+                console.error('날짜 추가 저장 실패:', error);
+                                 showInlineAlert('오류', '날짜 추가 저장에 실패했습니다.', 'error');
+                
+                // 실패 시 로컬 데이터 복원
+                dates.pop();
+                delete examInfoData.date_periods[newDay];
+            }
+            
+            renderScheduleTable();
+            updateSummaryInfo();
+        }
+
+        // 날짜 삭제
+        async function deleteDate(index) {
+                         if (dates.length <= 1) {
+                 showInlineAlert('경고', '최소 1개의 날짜는 필요합니다.', 'warning');
+                 return;
+             }
+            
+            if (confirm('이 날짜를 삭제하시겠습니까?')) {
+                const deletedDay = dates[index].day;
+                const deletedDayLabel = `제${deletedDay}일`;
+                
+                // 백업용 데이터 저장
+                const backupDate = {...dates[index]};
+                const backupPeriods = examInfoData.date_periods && examInfoData.date_periods[deletedDay] ? 
+                    {...examInfoData.date_periods[deletedDay]} : null;
+                
+                // 로컬 데이터 삭제
+                dates.splice(index, 1);
+                if (examInfoData.date_periods && examInfoData.date_periods[deletedDay]) {
+                    delete examInfoData.date_periods[deletedDay];
+                }
+                
+                // 날짜 번호는 그대로 유지 (재정렬하지 않음)
+                // 이렇게 하면 date_periods의 키가 변경되지 않아 데이터 손실을 방지할 수 있습니다.
+                
+                // 서버에서 삭제
+                try {
+                    // 날짜 정보 삭제
+                    const response = await fetch('/api/update-exam-info', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            field: `시험날짜.${deletedDayLabel}`,
+                            value: null  // null로 설정하여 완전 삭제
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('서버 삭제 실패');
+                    }
+                    
+                    // 해당 날짜의 교시 데이터도 완전히 삭제 (복원 불가능)
+                    if (backupPeriods) {
+                        for (const period of Object.keys(backupPeriods)) {
+                            await fetch('/api/update-exam-info', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    field: `date_periods.${deletedDay}.${period}`,
+                                    value: null  // null로 설정하여 완전 삭제
+                                })
+                            });
+                        }
+                    }
+                    
+                    // 날짜 번호 재정렬은 하지 않음 (데이터 손실 방지)
+                    
+                                         // 성공 메시지 제거 - 사용자 경험 개선
+                } catch (error) {
+                    console.error('날짜 삭제 저장 실패:', error);
+                                         showInlineAlert('오류', '날짜 삭제 저장에 실패했습니다.', 'error');
+                    
+                    // 실패 시 로컬 데이터 복원
+                    dates.splice(index, 0, backupDate);
+                    if (backupPeriods) {
+                        if (!examInfoData.date_periods) {
+                            examInfoData.date_periods = {};
+                        }
+                        examInfoData.date_periods[deletedDay] = backupPeriods;
+                    }
+                }
+                
+                renderScheduleTable();
+                updateSummaryInfo();
             }
         }
 
-        // 날짜별 교시 시간 업데이트
-        async function updateDatePeriodTime(day, period, field, value) {
+                 // 교시 추가
+         async function addPeriod() {
+             // 사용되지 않은 교시 번호 찾기
+             let newPeriod = 1;
+             while (periods.includes(newPeriod)) {
+                 newPeriod++;
+             }
+             periods.push(newPeriod);
+             
+             // 새로 추가된 교시의 기본 데이터 초기화
+             if (!examInfoData.date_periods) {
+                 examInfoData.date_periods = {};
+             }
+             
+             dates.forEach(dateInfo => {
+                 if (!examInfoData.date_periods[dateInfo.day]) {
+                     examInfoData.date_periods[dateInfo.day] = {};
+                 }
+                 
+                 // 스마트한 기본값 계산
+                 const smartDefaults = calculateSmartPeriodDefaults(dateInfo.day, newPeriod);
+                 
+                 if (!examInfoData.date_periods[dateInfo.day][newPeriod]) {
+                     examInfoData.date_periods[dateInfo.day][newPeriod] = smartDefaults;
+                 }
+             });
+             
+             // 서버에 저장
+             try {
+                 for (const dateInfo of dates) {
+                     await fetch('/api/update-exam-info', {
+                         method: 'POST',
+                         headers: {
+                             'Content-Type': 'application/json',
+                         },
+                         body: JSON.stringify({
+                             field: `date_periods.${dateInfo.day}.${newPeriod}`,
+                             value: examInfoData.date_periods[dateInfo.day][newPeriod]
+                         })
+                     });
+                 }
+                 
+                                      // 성공 메시지 제거 - 사용자 경험 개선
+             } catch (error) {
+                 console.error('교시 추가 저장 실패:', error);
+                                      showInlineAlert('오류', '교시 추가 저장에 실패했습니다.', 'error');
+                 
+                 // 실패 시 로컬 데이터 복원
+                 periods.pop();
+                 dates.forEach(dateInfo => {
+                     if (examInfoData.date_periods[dateInfo.day] && examInfoData.date_periods[dateInfo.day][newPeriod]) {
+                         delete examInfoData.date_periods[dateInfo.day][newPeriod];
+                     }
+                 });
+             }
+             
+             renderScheduleTable();
+             updateSummaryInfo();
+         }
+         
+                                       // 스마트한 교시 기본값 계산 함수
+           function calculateSmartPeriodDefaults(day, newPeriod) {
+               // 설정에서 기본값 가져오기
+               const config = window.examConfig || {};
+               const defaultDuration = config.default_duration || 50;
+               const defaultBreakTime = config.default_break_time || 10;
+               
+               // 1교시 추가하는 경우
+               if (newPeriod === 1) {
+                   return {
+                       start_time: getDefaultStartTime(1),
+                       duration: defaultDuration,
+                       end_time: calculateEndTime(getDefaultStartTime(1), defaultDuration)
+                   };
+               }
+               
+               // 2교시 이상 추가하는 경우
+               const prevPeriod = newPeriod - 1;
+               const prevPeriodData = examInfoData.date_periods[day] && 
+                                     examInfoData.date_periods[day][prevPeriod] ? 
+                                     examInfoData.date_periods[day][prevPeriod] : null;
+               
+               if (!prevPeriodData) {
+                   // 이전 교시 데이터가 없으면 기본값
+                   return {
+                       start_time: '09:00',
+                       duration: defaultDuration,
+                       end_time: calculateEndTime('09:00', defaultDuration)
+                   };
+               }
+               
+               // 진행 시간은 이전 교시와 동일하게
+               const duration = prevPeriodData.duration || defaultDuration;
+               
+               // 시작 시간 계산
+               let startTime;
+               
+               if (newPeriod === 2) {
+                   // 2교시: 1교시 종료 시간 + 기본 쉬는시간 (10분)
+                   let prevEndTime = prevPeriodData.end_time;
+                   if (!prevEndTime) {
+                       // end_time이 없으면 start_time과 duration으로 계산
+                       const prevStartTime = prevPeriodData.start_time || getDefaultStartTime(1);
+                       const prevDuration = prevPeriodData.duration || defaultDuration;
+                       prevEndTime = calculateEndTime(prevStartTime, prevDuration);
+                   }
+                   startTime = addMinutesToTime(prevEndTime, defaultBreakTime);
+               } else {
+                   // 3교시 이상: 이전 교시 종료 시간 + 실제 쉬는시간 계산
+                   let prevEndTime = prevPeriodData.end_time;
+                   if (!prevEndTime) {
+                       // end_time이 없으면 start_time과 duration으로 계산
+                       const prevStartTime = prevPeriodData.start_time || '09:00';
+                       const prevDuration = prevPeriodData.duration || defaultDuration;
+                       prevEndTime = calculateEndTime(prevStartTime, prevDuration);
+                   }
+                   
+                   // 이전 교시와 그 이전 교시 사이의 실제 쉬는시간 계산
+                   const prevPrevPeriod = newPeriod - 2;
+                   if (prevPrevPeriod >= 1) {
+                       const prevPrevPeriodData = examInfoData.date_periods[day] && 
+                                                 examInfoData.date_periods[day][prevPrevPeriod] ? 
+                                                 examInfoData.date_periods[day][prevPrevPeriod] : null;
+                       
+                       if (prevPrevPeriodData && prevPrevPeriodData.end_time) {
+                           // 실제 쉬는시간 계산 (이전 교시 시작시간 - 그 이전 교시 종료시간)
+                           const actualBreakTime = calculateTimeDifference(prevPrevPeriodData.end_time, prevPeriodData.start_time);
+                           if (actualBreakTime > 0) {
+                               // 실제 쉬는시간이 있으면 그 값을 사용
+                               startTime = addMinutesToTime(prevEndTime, actualBreakTime);
+                           } else {
+                               // 실제 쉬는시간이 없으면 기본값 사용
+                               startTime = addMinutesToTime(prevEndTime, defaultBreakTime);
+                           }
+                       } else {
+                           // 이전 교시 데이터가 부족하면 기본 쉬는시간 사용
+                           startTime = addMinutesToTime(prevEndTime, defaultBreakTime);
+                       }
+                   } else {
+                       // 3교시인 경우 (이전 교시가 2교시) 기본 쉬는시간 사용
+                       startTime = addMinutesToTime(prevEndTime, defaultBreakTime);
+                   }
+               }
+               
+               const endTime = calculateEndTime(startTime, duration);
+               
+               return {
+                   start_time: startTime,
+                   duration: duration,
+                   end_time: endTime
+               };
+           }
+         
+         // 시간에 분을 더하는 함수
+         function addMinutesToTime(timeString, minutes) {
+             if (!timeString || !minutes) return timeString;
+             
+             const [hours, mins] = timeString.split(':').map(Number);
+             if (isNaN(hours) || isNaN(mins)) return timeString;
+             
+             const totalMinutes = hours * 60 + mins + minutes;
+             const newHours = Math.floor(totalMinutes / 60) % 24;
+             const newMins = totalMinutes % 60;
+             
+             return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+         }
+         
+         // 두 시간 간의 차이를 분 단위로 계산하는 함수
+         function calculateTimeDifference(startTime, endTime) {
+             if (!startTime || !endTime) {
+                 return window.examConfig ? window.examConfig.default_break_time : 10; // 기본값
+             }
+             
+             const [startHours, startMins] = startTime.split(':').map(Number);
+             const [endHours, endMins] = endTime.split(':').map(Number);
+             
+             if (isNaN(startHours) || isNaN(startMins) || isNaN(endHours) || isNaN(endMins)) {
+                 return window.examConfig ? window.examConfig.default_break_time : 10; // 기본값
+             }
+             
+             let startTotal = startHours * 60 + startMins;
+             let endTotal = endHours * 60 + endMins;
+             
+             // 24시간을 넘어가는 경우 처리
+             if (endTotal < startTotal) {
+                 endTotal += 24 * 60;
+             }
+             
+             return endTotal - startTotal;
+         }
+
+        // 교시 삭제
+        async function deletePeriod(index) {
+                         if (periods.length <= 1) {
+                 showInlineAlert('경고', '최소 1개의 교시는 필요합니다.', 'warning');
+                 return;
+             }
+            
+            if (confirm('이 교시를 삭제하시겠습니까?')) {
+                const deletedPeriod = periods[index];
+                
+                // 백업용 데이터 저장
+                const backupPeriods = {};
+                if (examInfoData.date_periods) {
+                    Object.keys(examInfoData.date_periods).forEach(day => {
+                        if (examInfoData.date_periods[day] && examInfoData.date_periods[day][deletedPeriod]) {
+                            backupPeriods[day] = {...examInfoData.date_periods[day][deletedPeriod]};
+                        }
+                    });
+                }
+                
+                // 로컬 데이터 삭제
+                periods.splice(index, 1);
+                if (examInfoData.date_periods) {
+                    Object.keys(examInfoData.date_periods).forEach(day => {
+                        if (examInfoData.date_periods[day] && examInfoData.date_periods[day][deletedPeriod]) {
+                            delete examInfoData.date_periods[day][deletedPeriod];
+                        }
+                    });
+                }
+                
+                // 서버에서 삭제
+                try {
+                    for (const day of Object.keys(backupPeriods)) {
+                        await fetch('/api/update-exam-info', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                field: `date_periods.${day}.${deletedPeriod}`,
+                                value: null  // null로 설정하여 완전 삭제
+                            })
+                        });
+                    }
+                    
+                                         // 성공 메시지 제거 - 사용자 경험 개선
+                } catch (error) {
+                    console.error('교시 삭제 저장 실패:', error);
+                                         showInlineAlert('오류', '교시 삭제 저장에 실패했습니다.', 'error');
+                    
+                    // 실패 시 로컬 데이터 복원
+                    periods.splice(index, 0, deletedPeriod);
+                    if (!examInfoData.date_periods) {
+                        examInfoData.date_periods = {};
+                    }
+                    Object.keys(backupPeriods).forEach(day => {
+                        if (!examInfoData.date_periods[day]) {
+                            examInfoData.date_periods[day] = {};
+                        }
+                        examInfoData.date_periods[day][deletedPeriod] = backupPeriods[day];
+                    });
+                }
+                
+                renderScheduleTable();
+                updateSummaryInfo();
+            }
+        }
+
+                         // 날짜 업데이트
+        async function updateDate(index, newDate) {
+            const oldDate = dates[index].date;
+            dates[index].date = newDate;
+            
+                         // 날짜 유효성 검사
+             if (!isValidDate(newDate)) {
+                 dates[index].date = oldDate; // 원본 복원
+                 showInlineAlert('경고', '날짜가 올바르지 않습니다.', 'warning');
+                 renderScheduleTable(); // 테이블 다시 렌더링하여 시각적 피드백 제공
+                 return;
+             }
+            
+            // 제1일이 변경된 경우, 나머지 날짜들을 자동으로 설정
+            if (index === 0) {
+                await autoSetRemainingDates(newDate);
+            }
+            
+                         // 날짜 순서 검사
+             if (!isValidDateOrder()) {
+                 dates[index].date = oldDate; // 원본 복원
+                 showInlineAlert('경고', '날짜는 왼쪽부터 오른쪽으로 점점 커지는 순서여야 합니다.', 'warning');
+                 renderScheduleTable(); // 테이블 다시 렌더링하여 시각적 피드백 제공
+                 return;
+             }
+            
+            // 서버에 저장
+            try {
+                const dayLabel = `제${dates[index].day}일`;
+                const response = await fetch('/api/update-exam-info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        field: `시험날짜.${dayLabel}`,
+                        value: newDate
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('서버 저장 실패');
+                }
+                
+                                 // 성공 메시지 제거 - 사용자 경험 개선
+            } catch (error) {
+                console.error('날짜 업데이트 저장 실패:', error);
+                                 dates[index].date = oldDate; // 실패 시 원본 복원
+                 showInlineAlert('오류', '날짜 저장에 실패했습니다.', 'error');
+            }
+            
+            renderScheduleTable();
+        }
+
+                 // 시간 업데이트
+         async function updateTime(day, period, field, value) {
+            
             try {
                 const response = await fetch('/api/update-exam-info', {
                     method: 'POST',
@@ -311,37 +1098,350 @@
 
                 const data = await response.json();
                 
+                console.log(`Server response for Day ${day}, Period ${period}, Field ${field}:`, data);
+                
                 if (data.success) {
-                    // 로컬 데이터 업데이트
-                    if (!examInfoData.date_periods) {
-                        examInfoData.date_periods = {};
-                    }
-                    if (!examInfoData.date_periods[day]) {
-                        examInfoData.date_periods[day] = {};
-                    }
-                    if (!examInfoData.date_periods[day][period]) {
-                        examInfoData.date_periods[day][period] = {};
-                    }
-                    examInfoData.date_periods[day][period][field] = value;
+                     console.log(`Server response:`, data);
+                     
+                     // 로컬 데이터 업데이트
+                     if (!examInfoData.date_periods) {
+                         examInfoData.date_periods = {};
+                     }
+                     if (!examInfoData.date_periods[day]) {
+                         examInfoData.date_periods[day] = {};
+                     }
+                     if (!examInfoData.date_periods[day][period]) {
+                         examInfoData.date_periods[day][period] = {};
+                     }
+                     // 데이터 타입 변환
+                                           if (field === 'duration') {
+                          examInfoData.date_periods[day][period][field] = parseInt(value) || 50;
+                      } else {
+                         examInfoData.date_periods[day][period][field] = value;
+                     }
+                     
+                     console.log(`Updated local data for Day ${day}, Period ${period}:`, examInfoData.date_periods[day][period]);
                     
-                    // 요약 정보 업데이트
-                    updateSummaryInfo();
-                } else {
-                    showAlert('오류', data.error, 'error');
-                }
-            } catch (error) {
-                showAlert('오류', '교시 시간 업데이트 중 오류가 발생했습니다.', 'error');
-                console.error('Error updating date period time:', error);
-            }
+                                                             // 종료 시간 자동 계산
+                    if (field === 'start_time' || field === 'duration') {
+                        const startTime = examInfoData.date_periods[day][period].start_time || '09:00';
+                                                  const duration = parseInt(examInfoData.date_periods[day][period].duration || (window.examConfig ? window.examConfig.default_duration : 50));
+                        const endTime = calculateEndTime(startTime, duration);
+                        
+                        console.log(`Updating end_time for Day ${day}, Period ${period}: ${startTime} + ${duration}min = ${endTime}`);
+                        
+                        // 종료 시간 업데이트 (재귀 호출 방지)
+                        if (!examInfoData.date_periods[day][period].end_time || 
+                            examInfoData.date_periods[day][period].end_time !== endTime) {
+                            examInfoData.date_periods[day][period].end_time = endTime;
+                            
+                            // 계산된 종료시간을 서버에도 저장
+                            try {
+                                const endTimeResponse = await fetch('/api/update-exam-info', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        field: `date_periods.${day}.${period}.end_time`,
+                                        value: endTime
+                                    }),
+                                });
+                                
+                                if (endTimeResponse.ok) {
+                                    console.log(`End time successfully saved to server: ${endTime}`);
+                                } else {
+                                    console.error('Failed to save end time to server');
+                                }
+                            } catch (error) {
+                                console.error('Error saving end time to server:', error);
+                            }
+                        }
+                    }
+                    
+                                         // 뒷교시들의 유효성 검사는 제거 (사용자가 의도하지 않은 변경을 방지)
+                     // if (field === 'start_time' || field === 'duration') {
+                     //     validateAndFixSubsequentPeriods(day, period);
+                     // }
+                    
+                                         // 테이블 다시 렌더링
+                     renderScheduleTable();
+                     updateSummaryInfo();
+                                 } else {
+                     showInlineAlert('오류', data.error, 'error');
+                 }
+             } catch (error) {
+                 showInlineAlert('오류', '시간 업데이트 중 오류가 발생했습니다.', 'error');
+                 console.error('Error updating time:', error);
+             }
         }
 
-        // 시험 정보 업데이트
+        // 주말을 제외한 다음 날짜 계산
+        function getNextWeekday(dateString) {
+            const date = new Date(dateString);
+            date.setDate(date.getDate() + 1);
+            
+            // 주말(토요일=6, 일요일=0)인 경우 다음 평일로 이동
+            while (date.getDay() === 0 || date.getDay() === 6) {
+                date.setDate(date.getDate() + 1);
+            }
+            
+            return date.toISOString().split('T')[0];
+        }
+        
+        // 제1일부터 시작하여 주말을 제외한 날짜들 자동 설정
+        async function autoSetRemainingDates(firstDate) {
+            if (!firstDate) return;
+            
+            const firstDateObj = new Date(firstDate);
+            let currentDate = new Date(firstDate);
+            
+            // 각 날짜를 주말을 제외하여 설정
+            for (let i = 0; i < dates.length; i++) {
+                if (i === 0) {
+                    // 제1일은 사용자가 입력한 날짜 그대로
+                    dates[i].date = firstDate;
+                } else {
+                    // 나머지 날짜는 주말을 제외한 다음 날짜
+                    currentDate = getNextWeekday(currentDate.toISOString().split('T')[0]);
+                    dates[i].date = currentDate.toISOString().split('T')[0];
+                }
+                
+                // 서버에 저장
+                try {
+                    const dayLabel = `제${dates[i].day}일`;
+                    await fetch('/api/update-exam-info', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            field: `시험날짜.${dayLabel}`,
+                            value: dates[i].date
+                        })
+                    });
+                } catch (error) {
+                    console.error(`날짜 ${i+1} 저장 실패:`, error);
+                }
+            }
+        }
+        
+        // 교시별 기본 시작 시간 반환
+        function getDefaultStartTime(period) {
+            if (window.examConfig && window.examConfig.default_start_times) {
+                return window.examConfig.default_start_times[period] || '09:00';
+            }
+            
+            // 설정이 없을 경우 기본값
+            const defaultTimes = {
+                1: '08:30',  // 1교시: 8:30
+                2: '09:30',  // 2교시: 9:30
+                3: '10:30',  // 3교시: 10:30
+                4: '11:30'   // 4교시: 11:30
+            };
+            return defaultTimes[period] || '09:00';
+        }
+
+        // 종료 시간 계산
+        function calculateEndTime(startTime, durationMinutes) {
+            if (!startTime || !durationMinutes) {
+                return '00:00';
+            }
+            
+            const [hours, minutes] = startTime.split(':').map(Number);
+            if (isNaN(hours) || isNaN(minutes) || isNaN(durationMinutes)) {
+                return '00:00';
+            }
+            
+            const totalMinutes = hours * 60 + minutes + parseInt(durationMinutes);
+            const endHours = Math.floor(totalMinutes / 60);
+            const endMinutes = totalMinutes % 60;
+            
+            // 24시간을 넘어가는 경우 처리
+            const finalHours = endHours % 24;
+            
+            return `${String(finalHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+        }
+
+        // 날짜 유효성 검사
+        function isValidDate(dateString) {
+            // 빈 날짜는 무효 (입력해야 함)
+            if (!dateString || dateString === '') {
+                return false;
+            }
+            const date = new Date(dateString);
+            return date instanceof Date && !isNaN(date);
+        }
+
+                 // 날짜 순서 유효성 검사
+         function isValidDateOrder() {
+             for (let i = 0; i < dates.length - 1; i++) {
+                 const currentDate = new Date(dates[i].date);
+                 const nextDate = new Date(dates[i + 1].date);
+                 if (currentDate >= nextDate) {
+                     return false;
+                 }
+             }
+             return true;
+         }
+
+                   // 특정 날짜의 순서 유효성 검사
+          function isDateOrderValidForIndex(index) {
+              // 현재 날짜가 비어있으면 순서 검사 불가능
+              if (!dates[index].date || dates[index].date === '') {
+                  return true; // 빈 날짜는 순서 검사에서 제외
+              }
+              
+              if (index === 0) {
+                  // 첫 번째 날짜는 다음 날짜보다 작아야 함
+                  if (dates.length > 1 && dates[index + 1].date && dates[index + 1].date !== '') {
+                      const currentDate = new Date(dates[index].date);
+                      const nextDate = new Date(dates[index + 1].date);
+                      return currentDate < nextDate;
+                  }
+                  return true;
+              } else if (index === dates.length - 1) {
+                  // 마지막 날짜는 이전 날짜보다 커야 함
+                  if (dates[index - 1].date && dates[index - 1].date !== '') {
+                      const currentDate = new Date(dates[index].date);
+                      const prevDate = new Date(dates[index - 1].date);
+                      return currentDate > prevDate;
+                  }
+                  return true;
+              } else {
+                  // 중간 날짜는 이전보다 크고 다음보다 작아야 함
+                  const currentDate = new Date(dates[index].date);
+                  let isValid = true;
+                  
+                  // 이전 날짜와 비교
+                  if (dates[index - 1].date && dates[index - 1].date !== '') {
+                      const prevDate = new Date(dates[index - 1].date);
+                      isValid = isValid && currentDate > prevDate;
+                  }
+                  
+                  // 다음 날짜와 비교
+                  if (dates[index + 1].date && dates[index + 1].date !== '') {
+                      const nextDate = new Date(dates[index + 1].date);
+                      isValid = isValid && currentDate < nextDate;
+                  }
+                  
+                  return isValid;
+              }
+          }
+
+         // 요일 가져오기
+         function getDayOfWeek(dateString) {
+             if (!dateString || dateString === '') return '';
+             const date = new Date(dateString);
+             if (isNaN(date.getTime())) return '';
+             
+             const days = ['일', '월', '화', '수', '목', '금', '토'];
+             return days[date.getDay()];
+         }
+
+                 // 시간 유효성 검사
+         function isValidTime(timeString) {
+             const [hours, minutes] = timeString.split(':').map(Number);
+             return !isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60;
+         }
+
+         // 특정 교시 삭제
+         async function deleteSpecificPeriod(day, period) {
+             if (!confirm(`제${day}일 ${period}교시를 삭제하시겠습니까?`)) {
+                 return;
+             }
+             
+             try {
+                 const response = await fetch('/api/update-exam-info', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                     },
+                     body: JSON.stringify({
+                         field: `date_periods.${day}.${period}._deleted`,
+                         value: true
+                     })
+                 });
+
+                 if (!response.ok) {
+                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                 }
+
+                 const data = await response.json();
+                 
+                 if (data.success) {
+                     // 로컬 데이터 업데이트
+                     if (!examInfoData.date_periods[day][period]) {
+                         examInfoData.date_periods[day][period] = {};
+                     }
+                     examInfoData.date_periods[day][period]._deleted = true;
+                     
+                                           // 성공 메시지 제거 - 사용자 경험 개선
+                     renderScheduleTable();
+                     updateSummaryInfo();
+                 } else {
+                     showInlineAlert('오류', data.error, 'error');
+                 }
+             } catch (error) {
+                 showInlineAlert('오류', '교시 삭제 중 오류가 발생했습니다.', 'error');
+                 console.error('Error deleting period:', error);
+             }
+         }
+
+         // 특정 교시 복원
+         async function restorePeriod(day, period) {
+             try {
+                 const response = await fetch('/api/update-exam-info', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                     },
+                     body: JSON.stringify({
+                         field: `date_periods.${day}.${period}._deleted`,
+                         value: false
+                     })
+                 });
+
+                 if (!response.ok) {
+                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                 }
+
+                 const data = await response.json();
+                 
+                 if (data.success) {
+                     // 로컬 데이터 업데이트
+                     if (!examInfoData.date_periods[day][period]) {
+                         examInfoData.date_periods[day][period] = {};
+                     }
+                     examInfoData.date_periods[day][period]._deleted = false;
+                     
+                     // 기본값 설정 (데이터가 없는 경우)
+                     if (!examInfoData.date_periods[day][period].start_time) {
+                         examInfoData.date_periods[day][period].start_time = '09:00';
+                     }
+                     if (!examInfoData.date_periods[day][period].duration) {
+                         examInfoData.date_periods[day][period].duration = window.examConfig ? window.examConfig.default_duration : 50;
+                     }
+                     
+                                           // 성공 메시지 제거 - 사용자 경험 개선
+                     renderScheduleTable();
+                     updateSummaryInfo();
+                 } else {
+                     showInlineAlert('오류', data.error, 'error');
+                 }
+             } catch (error) {
+                 showInlineAlert('오류', '교시 복원 중 오류가 발생했습니다.', 'error');
+                 console.error('Error restoring period:', error);
+             }
+         }
+
+        // 시험 기본 정보 업데이트
         async function updateExamInfo(field, value) {
             try {
                 const response = await fetch('/api/update-exam-info', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         field: field,
@@ -349,52 +1449,48 @@
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
                 const data = await response.json();
                 
                 if (data.success) {
                     // 로컬 데이터 업데이트
-                    examInfoData[field] = value;
-                    
-                    // 교시 수나 시험 일수가 변경된 경우 날짜별 교시 시간 슬롯 다시 렌더링
-                    if (field === 'periods_per_day' || field === 'exam_days') {
-                        renderDatePeriodTimeSlots();
-                    }
-                    
-                    // 요약 정보 업데이트
-                    updateSummaryInfo();
-                } else {
-                    showAlert('오류', data.error, 'error');
-                }
+                                         examInfoData[field] = value;
+                     console.log(`Updated ${field}: ${value}`);
+                 } else {
+                     showInlineAlert('오류', data.error, 'error');
+                 }
             } catch (error) {
-                showAlert('오류', '시험 정보 업데이트 중 오류가 발생했습니다.', 'error');
+                showInlineAlert('오류', '시험 정보 업데이트 중 오류가 발생했습니다.', 'error');
                 console.error('Error updating exam info:', error);
             }
         }
 
         // 요약 정보 업데이트
-        function updateSummaryInfo() {
-            const examDays = parseInt(document.getElementById('examDays').value) || 0;
-            const periodsPerDay = parseInt(document.getElementById('periodsPerDay').value) || 0;
-            const totalSlots = examDays * periodsPerDay;
-            
-            let totalDuration = 0;
-            if (examInfoData.date_periods) {
-                for (const day in examInfoData.date_periods) {
-                    for (const period in examInfoData.date_periods[day]) {
-                        totalDuration += parseInt(examInfoData.date_periods[day][period].duration || 60);
-                    }
-                }
-            }
-            
-            document.getElementById('totalSlots').textContent = totalSlots;
-            document.getElementById('totalDays').textContent = examDays;
-            document.getElementById('totalPeriods').textContent = periodsPerDay;
-            document.getElementById('totalDuration').textContent = `${totalDuration}분`;
-        }
+         function updateSummaryInfo() {
+             const totalDays = dates.length;
+             const totalPeriods = periods.length;
+             
+             // 활성 슬롯 수 계산 (삭제된 교시 제외)
+             let activeSlots = 0;
+             let totalDuration = 0;
+             
+             if (examInfoData.date_periods) {
+                 for (const day in examInfoData.date_periods) {
+                     for (const period in examInfoData.date_periods[day]) {
+                         const periodData = examInfoData.date_periods[day][period];
+                         // 삭제되지 않은 교시만 계산
+                         if (!periodData._deleted) {
+                             activeSlots++;
+                                                           totalDuration += parseInt(periodData.duration || (window.examConfig ? window.examConfig.default_duration : 50));
+                         }
+                     }
+                 }
+             }
+             
+             document.getElementById('totalSlots').textContent = activeSlots;
+             document.getElementById('totalDays').textContent = totalDays;
+             document.getElementById('totalPeriods').textContent = totalPeriods;
+             document.getElementById('totalDuration').textContent = `${totalDuration}분`;
+         }
 
         // 시험 정보 초기화
         async function resetExamInfo() {
@@ -412,32 +1508,94 @@
                 if (data.success) {
                     showAlert('성공', data.message, 'success');
                     loadExamInfoData(); // 데이터 다시 로드
-                } else {
-                    showAlert('오류', data.error, 'error');
-                }
-            } catch (error) {
-                showAlert('오류', '초기화 중 오류가 발생했습니다.', 'error');
-                console.error('Error resetting exam info:', error);
-            }
+                                 } else {
+                     showInlineAlert('오류', data.error, 'error');
+                 }
+             } catch (error) {
+                 showInlineAlert('오류', '초기화 중 오류가 발생했습니다.', 'error');
+                 console.error('Error resetting exam info:', error);
+             }
         }
 
-        // 알림 표시
-        function showAlert(title, message, type) {
-            const modal = new bootstrap.Modal(document.getElementById('alertModal'));
-            document.getElementById('alertModalTitle').textContent = title;
-            document.getElementById('alertModalBody').textContent = message;
-            
-            const modalContent = document.querySelector('#alertModal .modal-content');
-            modalContent.className = 'modal-content';
-            
-            if (type === 'error') {
-                modalContent.classList.add('border-danger');
-            } else if (type === 'success') {
-                modalContent.classList.add('border-success');
-            }
-            
-            modal.show();
-        }
+                 // 인라인 알림 표시 (사용자가 보고 있는 위치에)
+         function showInlineAlert(title, message, type) {
+             // 기존 인라인 알림 제거
+             const existingAlert = document.querySelector('.inline-alert');
+             if (existingAlert) {
+                 existingAlert.remove();
+             }
+             
+             // 알림 요소 생성
+             const alertDiv = document.createElement('div');
+             alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} inline-alert`;
+             alertDiv.style.cssText = `
+                 position: fixed;
+                 top: 50%;
+                 left: 50%;
+                 transform: translate(-50%, -50%);
+                 z-index: 9999;
+                 max-width: 400px;
+                 box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                 border-radius: 8px;
+                 animation: fadeInOut 3s ease-in-out;
+             `;
+             
+             alertDiv.innerHTML = `
+                 <div class="d-flex align-items-center">
+                     <div class="flex-grow-1">
+                         <strong>${title}</strong><br>
+                         <small>${message}</small>
+                     </div>
+                     <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+                 </div>
+             `;
+             
+             // CSS 애니메이션 추가
+             if (!document.querySelector('#inlineAlertStyles')) {
+                 const style = document.createElement('style');
+                 style.id = 'inlineAlertStyles';
+                 style.textContent = `
+                     @keyframes fadeInOut {
+                         0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                         10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                         90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                         100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                     }
+                 `;
+                 document.head.appendChild(style);
+             }
+             
+             // 페이지에 추가
+             document.body.appendChild(alertDiv);
+             
+             // 3초 후 자동 제거
+             setTimeout(() => {
+                 if (alertDiv.parentElement) {
+                     alertDiv.remove();
+                 }
+             }, 3000);
+         }
+         
+         // 모달 알림 표시 (중요한 오류나 초기화 등에만 사용)
+         function showAlert(title, message, type) {
+             const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+             document.getElementById('alertModalTitle').textContent = title;
+             document.getElementById('alertModalBody').textContent = message;
+             
+             const modalContent = document.querySelector('#alertModal .modal-content');
+             modalContent.className = 'modal-content';
+             
+             if (type === 'error') {
+                 modalContent.classList.add('border-danger');
+             } else if (type === 'success') {
+                 modalContent.classList.add('border-success');
+             } else if (type === 'warning') {
+                 modalContent.classList.add('border-warning');
+             }
+             
+             modal.show();
+         }
     </script>
+{% endblock %}
 </body>
 </html> 

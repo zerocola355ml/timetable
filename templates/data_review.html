@@ -7,32 +7,10 @@
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="fas fa-database me-2"></i>데이터 검토</h2>
-                <button class="btn btn-warning" onclick="resetAllData()">
-                    <i class="fas fa-undo me-2"></i>모든 편집 초기화
+                <h2><i class="fas fa-database me-2"></i>데이터 설정</h2>
+                <button class="btn btn-danger" onclick="resetAllData()">
+                    <i class="fas fa-undo me-2"></i>모든 설정 초기화
                 </button>
-            </div>
-            
-            <!-- 진행 단계 표시 -->
-            <div class="progress mb-4" style="height: 10px;">
-                <div class="progress-bar bg-success" role="progressbar" style="width: 25%"></div>
-                <div class="progress-bar bg-success" role="progressbar" style="width: 25%"></div>
-                <div class="progress-bar bg-primary" role="progressbar" style="width: 25%"></div>
-                <div class="progress-bar bg-secondary" role="progressbar" style="width: 25%"></div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-3 text-center">
-                    <small class="text-success"><i class="fas fa-check"></i> 파일 업로드</small>
-                </div>
-                <div class="col-md-3 text-center">
-                    <small class="text-success"><i class="fas fa-check"></i> 데이터 검토</small>
-                </div>
-                <div class="col-md-3 text-center">
-                    <small class="text-primary"><i class="fas fa-cog"></i> 설정</small>
-                </div>
-                <div class="col-md-3 text-center">
-                    <small class="text-muted"><i class="fas fa-chart-bar"></i> 결과</small>
-                </div>
             </div>
         </div>
     </div>
@@ -42,35 +20,37 @@
     <!-- 편집 옵션 -->
     <div class="row">
         <div class="col-md-12">
-            <div class="card">
+            <!-- 필수 설정 -->
+            <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-edit me-2"></i>
-                        데이터 편집 옵션
+                        <i class="fas fa-exclamation-circle me-2 text-warning"></i>
+                        필수 설정 (Required Settings)
                     </h5>
+                    <small class="text-muted">시험 시간표 생성에 반드시 필요한 기본 설정입니다.</small>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <!-- <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-users fa-3x text-primary mb-3"></i>
-                                    <h6>분반배정표 편집</h6>
-                                    <p class="text-muted small">학생별 과목 수강 정보를 확인하고 수정하세요.</p>
-                                    <a href="{{ url_for('enrollment_data') }}" class="btn btn-outline-primary">
-                                        <i class="fas fa-edit me-2"></i>편집하기
-                                    </a>
-                                </div>
-                            </div>
-                        </div> -->
                         <div class="col-md-4 mb-3">
                             <div class="card h-100">
                                 <div class="card-body text-center">
-                                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
-                                    <h6>학생 충돌 편집</h6>
-                                    <p class="text-muted small">공통 수강 학생이 있는 과목 쌍들을 확인하고 필요시 제거하세요.</p>
-                                    <a href="{{ url_for('conflict_data') }}" class="btn btn-outline-warning">
-                                        <i class="fas fa-edit me-2"></i>편집하기
+                                    <i class="fas fa-calendar-alt fa-3x text-primary mb-3"></i>
+                                    <h6>시험 정보</h6>
+                                    <p class="text-muted small">시험 일정과 정보를 입력하세요.</p>
+                                    <a href="{{ url_for('exam_info') }}" class="btn btn-primary">
+                                        <i class="fas fa-edit me-2"></i>설정
+                                    </a>
+                                </div>
+                            </div>
+                        </div>                        
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-book fa-3x text-success mb-3"></i>
+                                    <h6>과목 정보</h6>
+                                    <p class="text-muted small">과목별 정보를 입력하세요.</p>
+                                    <a href="{{ url_for('exam_scope') }}" class="btn btn-success">
+                                        <i class="fas fa-edit me-2"></i>설정
                                     </a>
                                 </div>
                             </div>
@@ -78,11 +58,74 @@
                         <div class="col-md-4 mb-3">
                             <div class="card h-100">
                                 <div class="card-body text-center">
-                                    <i class="fas fa-headphones fa-3x text-danger mb-3"></i>
-                                    <h6>듣기평가 충돌 편집</h6>
-                                    <p class="text-muted small">듣기평가가 있는 과목들 간의 충돌을 확인하고 필요시 제거하세요.</p>
-                                    <a href="{{ url_for('listening_conflicts') }}" class="btn btn-outline-danger">
-                                        <i class="fas fa-edit me-2"></i>편집하기
+                                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                                    <h6>학생 충돌</h6>
+                                    <p class="text-muted small">공통 수강 학생 정보를 입력하세요.</p>
+                                    <a href="{{ url_for('conflict_selection') }}" class="btn btn-warning">
+                                        <i class="fas fa-edit me-2"></i>설정
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 선택 설정 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog me-2 text-secondary"></i>
+                        선택 설정 (Optional Settings)
+                    </h5>
+                    <small class="text-muted">시험 시간표 품질 향상을 위한 추가 설정입니다.</small>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-book fa-3x text-warning mb-3"></i>
+                                    <h6>과목 조건</h6>
+                                    <p class="text-muted small">과목별 불가능한 시험 시간을 설정합니다.</p>
+                                    <a href="{{ url_for('subject_constraints') }}" class="btn btn-outline-warning">
+                                        <i class="fas fa-edit me-2"></i>설정
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-chalkboard-teacher fa-3x text-secondary mb-3"></i>
+                                    <h6>교사 조건</h6>
+                                    <p class="text-muted small">교사별 불가능한 시험 시간을 설정합니다.</p>
+                                    <a href="{{ url_for('teacher_constraints') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-edit me-2"></i>설정
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-user-graduate fa-3x text-primary mb-3"></i>
+                                    <h6>학생 부담 조정</h6>
+                                    <p class="text-muted small">학생별로 하루에 볼 수 있는 (어려운)시험의 수를 설정합니다.</p>
+                                    <a href="{{ url_for('student_burden_config') }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-edit me-2"></i>설정
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                                    <h6>과목 충돌</h6>
+                                    <p class="text-muted small">특정 과목끼리 같은 시간에 배치되게 하거나 배치되지 않게 설정합니다.</p>
+                                    <a href="{{ url_for('subject_conflicts') }}" class="btn btn-outline-danger">
+                                        <i class="fas fa-edit me-2"></i>설정
                                     </a>
                                 </div>
                             </div>
@@ -91,10 +134,10 @@
                             <div class="card h-100">
                                 <div class="card-body text-center">
                                     <i class="fas fa-chalkboard-teacher fa-3x text-info mb-3"></i>
-                                    <h6>교사 충돌 편집</h6>
-                                    <p class="text-muted small">같은 교사가 담당하는 과목들 간의 충돌을 확인하고 필요시 제거하세요.</p>
+                                    <h6>교사 충돌</h6>
+                                    <p class="text-muted small">같은 교사가 담당하는 과목이 같은 시간에 배정되지 않게 설정합니다.</p>
                                     <a href="{{ url_for('teacher_conflicts') }}" class="btn btn-outline-info">
-                                        <i class="fas fa-edit me-2"></i>편집하기
+                                        <i class="fas fa-edit me-2"></i>설정
                                     </a>
                                 </div>
                             </div>
@@ -102,38 +145,12 @@
                         <div class="col-md-4 mb-3">
                             <div class="card h-100">
                                 <div class="card-body text-center">
-                                    <i class="fas fa-book fa-3x text-success mb-3"></i>
-                                    <h6>시험 범위 편집</h6>
-                                    <p class="text-muted small">과목별 정보(시간, 듣기평가 등)를 확인하고 수정하세요.</p>
-                                    <a href="{{ url_for('exam_scope') }}" class="btn btn-outline-success">
-                                        <i class="fas fa-edit me-2"></i>편집하기
+                                    <i class="fas fa-headphones fa-3x text-danger mb-3"></i>
+                                    <h6>듣기평가 충돌</h6>
+                                    <p class="text-muted small">듣기평가가 있는 과목이 같은 시간에 배정되지 않게 설정합니다.</p>
+                                    <a href="{{ url_for('listening_conflicts') }}" class="btn btn-outline-danger">
+                                        <i class="fas fa-edit me-2"></i>설정
                                     </a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-calendar-alt fa-3x text-info mb-3"></i>
-                                    <h6>시험 정보 편집</h6>
-                                    <p class="text-muted small">시험 일정 정보를 확인하고 수정하세요.</p>
-                                    <button class="btn btn-outline-info" disabled>
-                                        <i class="fas fa-edit me-2"></i>편집하기
-                                    </button>
-                                    <small class="text-muted d-block mt-1">(준비 중)</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-chalkboard-teacher fa-3x text-warning mb-3"></i>
-                                    <h6>교사 제약 편집</h6>
-                                    <p class="text-muted small">교사별 불가능한 시험 시간을 확인하고 수정하세요.</p>
-                                    <button class="btn btn-outline-warning" disabled>
-                                        <i class="fas fa-edit me-2"></i>편집하기
-                                    </button>
-                                    <small class="text-muted d-block mt-1">(준비 중)</small>
                                 </div>
                             </div>
                         </div>
@@ -150,123 +167,16 @@
                 <i class="fas fa-arrow-right me-2"></i>
                 다음 단계: 설정 조정
             </a>
-            <a href="{{ url_for('upload_files') }}" class="btn btn-outline-secondary btn-lg ms-2">
-                <i class="fas fa-arrow-left me-2"></i>
-                파일 다시 업로드
+            <a href="{{ url_for('data_review') }}" class="btn btn-outline-secondary btn-lg ms-2">
+                <i class="fas fa-edit me-2"></i>
+                데이터 편집
             </a>
         </div>
     </div>
 </div>
 
 <script>
-// 데이터 요약 정보 로드
-async function loadDataSummary() {
-    try {
-        const response = await fetch('/api/data-summary');
-        const data = await response.json();
-        
-        if (data.success) {
-            updateSummaryCards(data.summary);
-        } else {
-            console.error('Failed to load data summary:', data.error);
-        }
-    } catch (error) {
-        console.error('Error loading data summary:', error);
-    }
-}
 
-// 요약 카드 업데이트
-function updateSummaryCards(summary) {
-    const cards = document.querySelectorAll('#dataSummary .card');
-    
-    // 분반배정표 카드
-    if (summary.enrollment && !summary.enrollment.error) {
-        const enrollmentCard = cards[0].querySelector('.card-body');
-        enrollmentCard.innerHTML = `
-            <i class="fas fa-users fa-2x text-primary mb-2"></i>
-            <h5 class="card-title">분반배정표</h5>
-            <div class="row text-center">
-                <div class="col-6">
-                    <div class="h4 text-primary">${summary.enrollment.total_students}</div>
-                    <small class="text-muted">학생 수</small>
-                </div>
-                <div class="col-6">
-                    <div class="h4 text-success">${summary.enrollment.total_subjects}</div>
-                    <small class="text-muted">과목 수</small>
-                </div>
-            </div>
-            <div class="mt-2">
-                <small class="text-muted">평균 ${summary.enrollment.avg_subjects_per_student}과목/학생</small>
-            </div>
-        `;
-    }
-    
-    // 시험 범위 카드
-    if (summary.subjects && !summary.subjects.error) {
-        const subjectsCard = cards[1].querySelector('.card-body');
-        subjectsCard.innerHTML = `
-            <i class="fas fa-book fa-2x text-success mb-2"></i>
-            <h5 class="card-title">시험 범위</h5>
-            <div class="row text-center">
-                <div class="col-6">
-                    <div class="h4 text-success">${summary.subjects.total_subjects}</div>
-                    <small class="text-muted">총 과목</small>
-                </div>
-                <div class="col-6">
-                    <div class="h4 text-warning">${summary.subjects.hard_subjects}</div>
-                    <small class="text-muted">어려운 과목</small>
-                </div>
-            </div>
-            <div class="mt-2">
-                <small class="text-muted">듣기평가 ${summary.subjects.listening_subjects}과목</small>
-            </div>
-        `;
-    }
-    
-    // 시험 정보 카드
-    if (summary.exam_info && !summary.exam_info.error) {
-        const examCard = cards[2].querySelector('.card-body');
-        examCard.innerHTML = `
-            <i class="fas fa-calendar-alt fa-2x text-info mb-2"></i>
-            <h5 class="card-title">시험 정보</h5>
-            <div class="row text-center">
-                <div class="col-6">
-                    <div class="h4 text-info">${summary.exam_info.total_days}</div>
-                    <small class="text-muted">시험 일수</small>
-                </div>
-                <div class="col-6">
-                    <div class="h4 text-primary">${summary.exam_info.periods_per_day}</div>
-                    <small class="text-muted">교시/일</small>
-                </div>
-            </div>
-            <div class="mt-2">
-                <small class="text-muted">총 ${summary.exam_info.total_slots}개 슬롯</small>
-            </div>
-        `;
-    }
-    
-    // 교사 제약 카드
-    if (summary.teachers && !summary.teachers.error) {
-        const teachersCard = cards[3].querySelector('.card-body');
-        teachersCard.innerHTML = `
-            <i class="fas fa-chalkboard-teacher fa-2x text-warning mb-2"></i>
-            <h5 class="card-title">교사 제약</h5>
-            <div class="row text-center">
-                <div class="col-6">
-                    <div class="h4 text-warning">${summary.teachers.total_teachers}</div>
-                    <small class="text-muted">교사 수</small>
-                </div>
-                <div class="col-6">
-                    <div class="h4 text-danger">${summary.teachers.total_constraints}</div>
-                    <small class="text-muted">제약 조건</small>
-                </div>
-            </div>
-        `;
-    }
-}
-
-// 페이지 로드 시 데이터 요약 로드
-document.addEventListener('DOMContentLoaded', loadDataSummary);
 
 // 모든 편집 초기화 함수
 async function resetAllData() {

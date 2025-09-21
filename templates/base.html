@@ -71,9 +71,15 @@
                             <i class="fas fa-home me-1"></i>홈
                         </a>
                     </li>
+
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('upload_files') }}">
-                            <i class="fas fa-upload me-1"></i>파일 업로드
+                        <a class="nav-link" href="{{ url_for('data_review') }}">
+                            <i class="fas fa-search me-1"></i>데이터 설정
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('schedule_manager') }}">
+                            <i class="fas fa-edit me-1"></i>시간표 관리
                         </a>
                     </li>
                     <li class="nav-item">

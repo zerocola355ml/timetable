@@ -1,0 +1,791 @@
+{% extends "base.html" %}
+
+{% block title %}과목 충돌 설정 - 시험 시간표 배정 시스템{% endblock %}
+
+{% block extra_css %}
+<style>
+    .conflict-item {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        background-color: #f8f9fa;
+    }
+    .conflict-item:hover {
+        background-color: #e9ecef;
+    }
+    .conflict-type {
+        font-weight: bold;
+        color: #dc3545;
+    }
+    .conflict-subjects {
+        color: #495057;
+        font-size: 1.1em;
+    }
+    .btn-remove {
+        color: #dc3545;
+        border: none;
+        background: none;
+        font-size: 1.2em;
+    }
+    .btn-remove:hover {
+        color: #c82333;
+    }
+    .form-section {
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .conflicts-list {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    .alert-custom {
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-group-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    
+    /* 검색 가능한 단일 선택 드롭다운 스타일 */
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+    
+    .searchable-select .select-input {
+        width: 100%;
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        background-color: #fff;
+        cursor: pointer;
+    }
+    
+    .searchable-select .select-input:focus {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .searchable-select .dropdown-arrow {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #6c757d;
+    }
+    
+    .searchable-select .dropdown-menu-custom {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    
+    .searchable-select .dropdown-item-custom {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .searchable-select .dropdown-item-custom:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .searchable-select .dropdown-item-custom:last-child {
+        border-bottom: none;
+    }
+    
+    .searchable-select .no-results {
+        padding: 0.5rem 0.75rem;
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+    }
+    
+    .searchable-select .dropdown-item-custom.highlighted {
+        background-color: #0d6efd !important;
+        color: white !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    과목 충돌 설정
+                </h2>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger" id="clearAllConflictsBtn" style="display: none;">
+                        <i class="fas fa-trash me-2"></i>
+                        편집 취소
+                    </button>
+                    <a href="{{ url_for('data_review') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>돌아가기
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 과목 충돌 추가 폼 -->
+            <div class="form-section">
+                <h5 class="mb-3">
+                    <i class="fas fa-plus-circle text-primary me-2"></i>
+                    새로운 과목 충돌 추가
+                </h5>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="subject1SearchableSelect" class="form-label">첫 번째 과목</label>
+                        <div class="searchable-select" id="subject1SearchableSelect">
+                            <input type="text" class="select-input" id="subject1SearchInput" 
+                                   placeholder="과목을 선택하세요" onclick="openSubject1Dropdown()" 
+                                   onfocus="openSubject1Dropdown()">
+                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                            <div class="dropdown-menu-custom" id="subject1DropdownMenu">
+                                <div id="subject1DropdownList"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="subject2SearchableSelect" class="form-label">두 번째 과목</label>
+                        <div class="searchable-select" id="subject2SearchableSelect">
+                            <input type="text" class="select-input" id="subject2SearchInput" 
+                                   placeholder="과목을 선택하세요" onclick="openSubject2Dropdown()" 
+                                   onfocus="openSubject2Dropdown()">
+                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                            <div class="dropdown-menu-custom" id="subject2DropdownMenu">
+                                <div id="subject2DropdownList"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="conflictType" class="form-label">충돌 유형</label>
+                        <select class="form-select" id="conflictType" required>
+                            <option value="">충돌 유형을 선택하세요</option>
+                            <option value="same_time">같은 시간에 배치</option>
+                            <option value="avoid_same_time">같은 시간에 배치 불가</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary" id="addConflictBtn">
+                            <i class="fas fa-plus me-2"></i>
+                            충돌 추가
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 알림 메시지 -->
+            <div id="alertContainer"></div>
+            
+            <!-- 기존 충돌 목록 -->
+            <div class="form-section">
+                <h5 class="mb-3">
+                    <i class="fas fa-list text-info me-2"></i>
+                    설정된 과목 충돌 목록
+                </h5>
+                
+                <div id="conflictsList" class="conflicts-list">
+                    <!-- 충돌 목록이 여기에 동적으로 로드됩니다 -->
+                </div>
+                
+                <div id="noConflictsMessage" class="text-center text-muted py-4" style="display: none;">
+                    <i class="fas fa-info-circle fa-2x mb-2"></i>
+                    <p>설정된 과목 충돌이 없습니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 전역 변수
+    let subjects = [];
+    let conflicts = {};
+    let selectedSubject1 = '';
+    let selectedSubject2 = '';
+    let currentHighlightedIndex1 = -1; // 첫 번째 과목 하이라이트 인덱스
+    let currentHighlightedIndex2 = -1; // 두 번째 과목 하이라이트 인덱스
+    
+    // 페이지 로드 시 실행
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSubjects();
+        loadConflicts();
+        
+        // 외부 클릭 시 드롭다운 닫기
+        document.addEventListener('click', function(e) {
+            const subject1Select = document.getElementById('subject1SearchableSelect');
+            const subject2Select = document.getElementById('subject2SearchableSelect');
+            
+            if (subject1Select && !subject1Select.contains(e.target)) {
+                closeSubject1Dropdown();
+            }
+            if (subject2Select && !subject2Select.contains(e.target)) {
+                closeSubject2Dropdown();
+            }
+        });
+    });
+    
+    // 과목 목록 로드
+    async function loadSubjects() {
+        try {
+            const response = await fetch('/api/subject-conflicts-data');
+            const data = await response.json();
+            
+            if (data.success) {
+                subjects = data.subjects;
+                populateSubjectDropdowns();
+            } else {
+                showAlert('과목 정보를 불러올 수 없습니다: ' + data.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('과목 정보 로드 중 오류가 발생했습니다: ' + error.message, 'danger');
+        }
+    }
+    
+    // 과목 드롭다운 채우기
+    function populateSubjectDropdowns() {
+        initSubject1Dropdown();
+        initSubject2Dropdown();
+    }
+    
+    // 첫 번째 과목 드롭다운 초기화
+    function initSubject1Dropdown() {
+        const dropdownList = document.getElementById('subject1DropdownList');
+        dropdownList.innerHTML = '';
+        
+        subjects.forEach(subject => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item-custom';
+            item.textContent = subject;
+            item.addEventListener('click', () => selectSubject1(subject));
+            dropdownList.appendChild(item);
+        });
+    }
+    
+    // 두 번째 과목 드롭다운 초기화
+    function initSubject2Dropdown() {
+        const dropdownList = document.getElementById('subject2DropdownList');
+        dropdownList.innerHTML = '';
+        
+        subjects.forEach(subject => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item-custom';
+            item.textContent = subject;
+            item.addEventListener('click', () => selectSubject2(subject));
+            dropdownList.appendChild(item);
+        });
+    }
+    
+    // 첫 번째 과목 선택
+    function selectSubject1(subject) {
+        selectedSubject1 = subject;
+        const searchInput = document.getElementById('subject1SearchInput');
+        searchInput.value = subject;
+        closeSubject1Dropdown();
+    }
+    
+    // 두 번째 과목 선택
+    function selectSubject2(subject) {
+        selectedSubject2 = subject;
+        const searchInput = document.getElementById('subject2SearchInput');
+        searchInput.value = subject;
+        closeSubject2Dropdown();
+    }
+    
+    // 첫 번째 과목 드롭다운 토글
+    function toggleSubject1Dropdown() {
+        const menu = document.getElementById('subject1DropdownMenu');
+        const isVisible = menu.style.display === 'block';
+        
+        if (isVisible) {
+            closeSubject1Dropdown();
+        } else {
+            openSubject1Dropdown();
+        }
+    }
+    
+    // 두 번째 과목 드롭다운 토글
+    function toggleSubject2Dropdown() {
+        const menu = document.getElementById('subject2DropdownMenu');
+        const isVisible = menu.style.display === 'block';
+        
+        if (isVisible) {
+            closeSubject2Dropdown();
+        } else {
+            openSubject2Dropdown();
+        }
+    }
+    
+    // 첫 번째 과목 드롭다운 열기
+    function openSubject1Dropdown() {
+        const menu = document.getElementById('subject1DropdownMenu');
+        const searchInput = document.getElementById('subject1SearchInput');
+        
+        menu.style.display = 'block';
+        searchInput.focus();
+        currentHighlightedIndex1 = -1; // 하이라이트 초기화
+        
+        // 검색 기능 활성화
+        searchInput.oninput = function() {
+            filterSubjects1(this.value);
+            currentHighlightedIndex1 = -1; // 검색 시 하이라이트 초기화
+            clearHighlight1();
+        };
+        
+        // 키보드 이벤트 리스너 추가
+        searchInput.onkeydown = function(e) {
+            handleKeyboardNavigation1(e);
+        };
+    }
+    
+    // 두 번째 과목 드롭다운 열기
+    function openSubject2Dropdown() {
+        const menu = document.getElementById('subject2DropdownMenu');
+        const searchInput = document.getElementById('subject2SearchInput');
+        
+        menu.style.display = 'block';
+        searchInput.focus();
+        currentHighlightedIndex2 = -1; // 하이라이트 초기화
+        
+        // 검색 기능 활성화
+        searchInput.oninput = function() {
+            filterSubjects2(this.value);
+            currentHighlightedIndex2 = -1; // 검색 시 하이라이트 초기화
+            clearHighlight2();
+        };
+        
+        // 키보드 이벤트 리스너 추가
+        searchInput.onkeydown = function(e) {
+            handleKeyboardNavigation2(e);
+        };
+    }
+    
+    // 첫 번째 과목 드롭다운 닫기
+    function closeSubject1Dropdown() {
+        const menu = document.getElementById('subject1DropdownMenu');
+        const searchInput = document.getElementById('subject1SearchInput');
+        
+        menu.style.display = 'none';
+        searchInput.oninput = null;
+        searchInput.onkeydown = null;
+        currentHighlightedIndex1 = -1;
+    }
+    
+    // 두 번째 과목 드롭다운 닫기
+    function closeSubject2Dropdown() {
+        const menu = document.getElementById('subject2DropdownMenu');
+        const searchInput = document.getElementById('subject2SearchInput');
+        
+        menu.style.display = 'none';
+        searchInput.oninput = null;
+        searchInput.onkeydown = null;
+        currentHighlightedIndex2 = -1;
+    }
+    
+    // 첫 번째 과목 필터링
+    function filterSubjects1(searchTerm) {
+        const dropdownList = document.getElementById('subject1DropdownList');
+        const filteredSubjects = subjects.filter(subject => 
+            subject.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        dropdownList.innerHTML = '';
+        
+        if (filteredSubjects.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.className = 'no-results';
+            noResults.textContent = '검색 결과가 없습니다';
+            dropdownList.appendChild(noResults);
+        } else {
+            filteredSubjects.forEach(subject => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item-custom';
+                item.textContent = subject;
+                item.addEventListener('click', () => selectSubject1(subject));
+                dropdownList.appendChild(item);
+            });
+        }
+    }
+    
+    // 두 번째 과목 필터링
+    function filterSubjects2(searchTerm) {
+        const dropdownList = document.getElementById('subject2DropdownList');
+        const filteredSubjects = subjects.filter(subject => 
+            subject.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        dropdownList.innerHTML = '';
+        
+        if (filteredSubjects.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.className = 'no-results';
+            noResults.textContent = '검색 결과가 없습니다';
+            dropdownList.appendChild(noResults);
+        } else {
+            filteredSubjects.forEach(subject => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item-custom';
+                item.textContent = subject;
+                item.addEventListener('click', () => selectSubject2(subject));
+                dropdownList.appendChild(item);
+            });
+        }
+    }
+    
+    // 첫 번째 과목 키보드 네비게이션 처리
+    function handleKeyboardNavigation1(e) {
+        const items = document.querySelectorAll('#subject1DropdownList .dropdown-item-custom:not(.no-results)');
+        
+        if (items.length === 0) return;
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                currentHighlightedIndex1 = Math.min(currentHighlightedIndex1 + 1, items.length - 1);
+                updateHighlight1(items);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                currentHighlightedIndex1 = Math.max(currentHighlightedIndex1 - 1, 0);
+                updateHighlight1(items);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (currentHighlightedIndex1 >= 0 && currentHighlightedIndex1 < items.length) {
+                    const selectedText = items[currentHighlightedIndex1].textContent;
+                    selectSubject1(selectedText);
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                closeSubject1Dropdown();
+                break;
+        }
+    }
+    
+    // 두 번째 과목 키보드 네비게이션 처리
+    function handleKeyboardNavigation2(e) {
+        const items = document.querySelectorAll('#subject2DropdownList .dropdown-item-custom:not(.no-results)');
+        
+        if (items.length === 0) return;
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                currentHighlightedIndex2 = Math.min(currentHighlightedIndex2 + 1, items.length - 1);
+                updateHighlight2(items);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                currentHighlightedIndex2 = Math.max(currentHighlightedIndex2 - 1, 0);
+                updateHighlight2(items);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (currentHighlightedIndex2 >= 0 && currentHighlightedIndex2 < items.length) {
+                    const selectedText = items[currentHighlightedIndex2].textContent;
+                    selectSubject2(selectedText);
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                closeSubject2Dropdown();
+                break;
+        }
+    }
+    
+    // 첫 번째 과목 하이라이트 업데이트
+    function updateHighlight1(items) {
+        clearHighlight1();
+        if (currentHighlightedIndex1 >= 0 && currentHighlightedIndex1 < items.length) {
+            items[currentHighlightedIndex1].classList.add('highlighted');
+            items[currentHighlightedIndex1].scrollIntoView({ block: 'nearest' });
+        }
+    }
+    
+    // 두 번째 과목 하이라이트 업데이트
+    function updateHighlight2(items) {
+        clearHighlight2();
+        if (currentHighlightedIndex2 >= 0 && currentHighlightedIndex2 < items.length) {
+            items[currentHighlightedIndex2].classList.add('highlighted');
+            items[currentHighlightedIndex2].scrollIntoView({ block: 'nearest' });
+        }
+    }
+    
+    // 첫 번째 과목 하이라이트 제거
+    function clearHighlight1() {
+        const items = document.querySelectorAll('#subject1DropdownList .dropdown-item-custom');
+        items.forEach(item => item.classList.remove('highlighted'));
+    }
+    
+    // 두 번째 과목 하이라이트 제거
+    function clearHighlight2() {
+        const items = document.querySelectorAll('#subject2DropdownList .dropdown-item-custom');
+        items.forEach(item => item.classList.remove('highlighted'));
+    }
+    
+    // 충돌 목록 로드
+    async function loadConflicts() {
+        try {
+            const response = await fetch('/api/subject-conflicts-data');
+            const data = await response.json();
+            
+            if (data.success) {
+                conflicts = data.conflicts || {};
+                displayConflicts();
+                updateClearAllButton();
+            } else {
+                showAlert('충돌 정보를 불러올 수 없습니다: ' + data.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('충돌 정보 로드 중 오류가 발생했습니다: ' + error.message, 'danger');
+        }
+    }
+    
+    // 충돌 목록 표시
+    function displayConflicts() {
+        const conflictsList = document.getElementById('conflictsList');
+        const noConflictsMessage = document.getElementById('noConflictsMessage');
+        
+        if (Object.keys(conflicts).length === 0) {
+            conflictsList.innerHTML = '';
+            noConflictsMessage.style.display = 'block';
+            return;
+        }
+        
+        noConflictsMessage.style.display = 'none';
+        conflictsList.innerHTML = '';
+        
+        Object.entries(conflicts).forEach(([key, conflict]) => {
+            const conflictItem = createConflictItem(key, conflict);
+            conflictsList.appendChild(conflictItem);
+        });
+    }
+    
+    // 충돌 아이템 생성
+    function createConflictItem(key, conflict) {
+        const div = document.createElement('div');
+        div.className = 'conflict-item';
+        
+        let conflictTypeText, conflictTypeClass;
+        if (conflict.type === 'same_time') {
+            conflictTypeText = '같은 시간에 배치';
+            conflictTypeClass = 'text-success';
+        } else if (conflict.type === 'avoid_same_time') {
+            conflictTypeText = '같은 시간에 배치 불가';
+            conflictTypeClass = 'text-danger';
+        } else {
+            conflictTypeText = conflict.type;
+            conflictTypeClass = 'text-warning';
+        }
+        
+        div.innerHTML = `
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="conflict-subjects">
+                        <strong>${conflict.subject1}</strong> ↔ <strong>${conflict.subject2}</strong>
+                    </div>
+                    <div class="conflict-type ${conflictTypeClass}">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${conflictTypeText}
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn-remove" onclick="removeConflict('${key}')" title="충돌 제거">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        return div;
+    }
+    
+    // 편집 취소 버튼 표시/숨김 업데이트
+    function updateClearAllButton() {
+        const clearAllBtn = document.getElementById('clearAllConflictsBtn');
+        if (Object.keys(conflicts).length > 0) {
+            clearAllBtn.style.display = 'inline-block';
+        } else {
+            clearAllBtn.style.display = 'none';
+        }
+    }
+    
+    // 충돌 추가
+    async function addConflict() {
+        const subject1 = selectedSubject1;
+        const subject2 = selectedSubject2;
+        const conflictType = document.getElementById('conflictType').value;
+        
+        // 유효성 검사
+        if (!subject1 || !subject2 || !conflictType) {
+            showAlert('모든 필드를 입력해주세요.', 'warning');
+            return;
+        }
+        
+        if (subject1 === subject2) {
+            showAlert('서로 다른 과목을 선택해주세요.', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/add-subject-conflict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    subject1: subject1,
+                    subject2: subject2,
+                    type: conflictType,
+                    priority: 'high',
+                    reason: '사용자 설정'
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('과목 충돌이 추가되었습니다.', 'success');
+                resetForm();
+                loadConflicts();
+            } else {
+                showAlert('충돌 추가 실패: ' + data.error, 'danger');
+            }
+        } catch (error) {
+            showAlert('충돌 추가 중 오류가 발생했습니다: ' + error.message, 'danger');
+        }
+    }
+    
+    // 충돌 제거
+    async function removeConflict(conflictKey) {
+        if (!confirm('이 충돌 설정을 제거하시겠습니까?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/delete-subject-conflict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    key: conflictKey
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('과목 충돌이 제거되었습니다.', 'success');
+                loadConflicts();
+            } else {
+                showAlert('충돌 제거 실패: ' + data.error, 'danger');
+            }
+        } catch (error) {
+            showAlert('충돌 제거 중 오류가 발생했습니다: ' + error.message, 'danger');
+        }
+    }
+    
+    // 모든 충돌 제거 (편집 취소)
+    async function clearAllConflicts() {
+        if (!confirm('모든 과목 충돌 설정을 제거하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+            return;
+        }
+        
+        try {
+            // 각 충돌을 개별적으로 제거
+            const conflictKeys = Object.keys(conflicts);
+            let successCount = 0;
+            
+            for (const key of conflictKeys) {
+                const response = await fetch('/api/delete-subject-conflict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        key: key
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    successCount++;
+                }
+            }
+            
+            if (successCount === conflictKeys.length) {
+                showAlert('모든 과목 충돌이 제거되었습니다.', 'success');
+                loadConflicts();
+            } else {
+                showAlert(`${successCount}/${conflictKeys.length}개의 충돌이 제거되었습니다.`, 'warning');
+                loadConflicts();
+            }
+        } catch (error) {
+            showAlert('충돌 제거 중 오류가 발생했습니다: ' + error.message, 'danger');
+        }
+    }
+    
+    // 폼 초기화
+    function resetForm() {
+        selectedSubject1 = '';
+        selectedSubject2 = '';
+        document.getElementById('subject1SearchInput').value = '';
+        document.getElementById('subject2SearchInput').value = '';
+        document.getElementById('conflictType').value = '';
+    }
+    
+    // 알림 메시지 표시
+    function showAlert(message, type) {
+        const alertContainer = document.getElementById('alertContainer');
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-custom alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        alertContainer.appendChild(alertDiv);
+        
+        // 5초 후 자동 제거
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    // 이벤트 리스너 등록
+    document.getElementById('addConflictBtn').addEventListener('click', addConflict);
+    document.getElementById('clearAllConflictsBtn').addEventListener('click', clearAllConflicts);
+</script>
+{% endblock %}

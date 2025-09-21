@@ -1,0 +1,4649 @@
+{% extends "base.html" %}
+
+{% block title %}시험 시간표 관리 - 시험 시간표 배정 시스템{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 전체 레이아웃 */
+html, body {
+    overflow-x: hidden; /* 가로 스크롤 숨기기 */
+    overflow-y: auto; /* 세로 스크롤 허용 */
+}
+
+.schedule-manager-container {
+    min-height: calc(100vh - 80px); /* height를 min-height로 변경 */
+    /* overflow: hidden 제거하여 스크롤 허용 */
+}
+
+.schedule-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 1.5rem 0;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* 상단 정보 바 스타일 */
+.info-stats {
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    border-right: 1px solid rgba(255,255,255,0.4);
+}
+
+.stat-item:last-child {
+    border-right: none;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.stat-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.stat-value.warning {
+    color: #ffc107;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+}
+
+.stat-value.danger {
+    color: #ff6b6b;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+}
+
+.schedule-content {
+    display: flex;
+    align-items: stretch; /* 중요: 두 패널의 높이를 같게! */
+    gap: 1rem;
+    padding: 1rem 0; /* 상하 여백 추가 */
+}
+
+/* 좌측 패널 */
+.left-panel {
+    width: 200px;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    /* 높이 미지정! 자동으로 main-panel과 동일해짐 */
+}
+
+.subject-list {
+    flex: 1 1 0;
+    overflow-y: auto; /* 많을 때만 subject-list 영역에 스크롤 */
+    margin: 0;
+    margin-bottom: 0;
+    min-height: 0; /* flexbox에서 stretch시 overflow 제대로 작동 */
+    padding-bottom: 0.5rem; /* 하단 여백 */
+    padding-right: 0.25rem; /* 스크롤바와 여백 */
+}
+
+.subject-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    margin-bottom: 0.375rem;
+    cursor: grab;
+    transition: all 0.2s ease;
+    user-select: none;
+    position: relative;
+    z-index: 2;
+}
+
+.subject-item:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+.subject-item:active {
+    cursor: grabbing;
+}
+
+.subject-item.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+}
+
+/* 추천 과목 스타일 */
+.recommendation-section {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    background: #f8fafc;
+}
+
+.recommended-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: white;
+    border: 2px solid #fbbf24;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.recommended-item:hover {
+    background: #fffbeb;
+    border-color: #f59e0b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+.recommended-item .subject-name {
+    font-weight: 500;
+    color: #1f2937;
+    font-size: 13px;
+}
+
+.recommended-item .priority-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.priority-high {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.priority-medium {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.priority-low {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.recommended-item .reason-icon {
+    color: #6b7280;
+    margin-left: 4px;
+    cursor: help;
+}
+
+
+.banner-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0;
+    min-height: auto;
+}
+
+.banner-icon {
+    font-size: 18px;
+    margin-right: 10px;
+    animation: pulse 2s infinite;
+}
+
+.banner-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.banner-label {
+    font-weight: 600;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.banner-recommendations {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* 상세정보 버튼 스타일 */
+#bannerDetailsBtn {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-color: rgba(255,255,255,0.3);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+#bannerDetailsBtn:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.6);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 추천 과목 항목 스타일 */
+.banner-recommendation-item {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255,255,255,0.15);
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin-right: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 13px;
+}
+
+.banner-recommendation-item:hover {
+    background: rgba(255,255,255,0.25);
+    transform: translateY(-1px);
+}
+
+.banner-recommendation-item .priority-badge {
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 8px;
+    margin-right: 4px;
+    font-weight: 600;
+}
+
+.banner-recommendation-item .priority-1 {
+    background: #ef4444;
+    color: white;
+}
+
+.banner-recommendation-item .priority-2 {
+    background: #f59e0b;
+    color: white;
+}
+
+.banner-recommendation-item .priority-3 {
+    background: #10b981;
+    color: white;
+}
+
+/* 애니메이션 */
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .banner-content {
+        padding: 8px 0;
+        min-height: 40px;
+    }
+    
+    .banner-icon {
+        font-size: 16px;
+        margin-right: 8px;
+    }
+    
+    .banner-label, .banner-recommendations {
+        font-size: 12px;
+    }
+    
+    .banner-recommendation-item {
+        font-size: 11px;
+        padding: 2px 6px;
+        margin-right: 4px;
+    }
+    
+    .banner-actions {
+        gap: 4px;
+    }
+}
+
+/* 배너가 닫힌 상태 */
+.recommendation-banner.collapsed {
+    height: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+.subject-name {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+.subject-info {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.subject-duration {
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+.subject-grade {
+    color: #28a745;
+}
+
+.subject-student-count {
+    color: #6f42c1;
+    font-weight: 500;
+}
+
+/* 학생 부담 분석 패널 스타일 */
+.student-burden-panel {
+    flex: 0 0 auto; /* 고정 크기 */
+    margin-top: 0.5rem; /* 상단 여백 줄임 */
+    /* height와 overflow 제거로 자연스러운 높이 확장 허용 */
+}
+
+.burden-table {
+    table-layout: fixed;
+    font-size: 0.85rem;
+}
+
+.burden-header {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    width: 80px;
+    text-align: center;
+}
+
+.burden-cell {
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+    padding: 0.5rem 0.25rem;
+}
+
+.burden-cell:hover {
+    background-color: #e9ecef;
+}
+
+.burden-cell.normal {
+    color: #28a745;
+    background-color: #d4edda;
+}
+
+.burden-cell.warning {
+    color: #ffc107;
+    background-color: #fff3cd;
+}
+
+.burden-cell.danger {
+    color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.burden-cell.normal:hover {
+    background-color: #c3e6cb;
+}
+
+.burden-cell.warning:hover {
+    background-color: #ffeaa7;
+}
+
+.burden-cell.danger:hover {
+    background-color: #f1aeb5;
+}
+
+#burdenPanelBody.collapsed {
+    display: none;
+}
+
+.burden-section h6 {
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+/* 좌측 패널 하단 고정 버튼 영역 */
+.left-panel-buttons {
+    flex-shrink: 0; /* 버튼 영역이 줄어들지 않도록 */
+    flex-grow: 0; /* 늘어나지도 않도록 */
+    margin-top: 0.5rem; /* 위쪽 여백 */
+    padding: 0.75rem 0 0 0; /* 위쪽 패딩 */
+    border-top: 1px solid #dee2e6;
+    background: #f8f9fa; /* 배경색 동일 */
+    /* sticky 제거로 자연스러운 위치 */
+}
+
+/* 중앙 메인 영역 */
+.main-panel {
+    flex: 1;
+    min-height: 0; /* flexbox shrink fix, 필요시 */
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    /* 스크롤 없음: overflow 속성 지정하지 않음 */
+}
+
+.schedule-grid-container {
+    min-width: 800px;
+    overflow-x: auto; /* 가로 스크롤만 유지 (테이블이 너무 넓을 때) */
+    width: 100%;
+    flex: 0 0 auto; /* 고정 크기로 변경 - 필요한 공간만 차지 */
+    margin-bottom: 0; /* 하단 여백 제거 */
+}
+
+
+.schedule-grid {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin: 0; /* 테이블 여백 제거 */
+}
+
+.schedule-grid th {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #6366f1;
+}
+
+.schedule-grid td {
+    height: 80px; /* 높이 줄임 */
+    min-width: 100px;
+    width: auto;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    vertical-align: top;
+    position: relative;
+    background: #fafafa;
+    transition: all 0.2s ease;
+    z-index: 1;
+}
+
+.schedule-grid td:hover {
+    background: #f0f9ff;
+    border-color: #0ea5e9;
+}
+
+.schedule-grid td.drop-zone {
+    background: #dbeafe;
+    border-color: #0ea5e9;
+    border-style: dashed;
+    border-width: 2px;
+}
+
+.schedule-grid td.drop-zone-invalid {
+    background: #fecaca;
+    border-color: #ef4444;
+    border-style: dashed;
+    border-width: 2px;
+}
+
+.schedule-grid td.drop-zone-warning {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    border-style: dashed;
+    border-width: 2px;
+}
+
+.schedule-grid td.drop-zone-recommended {
+    background: #d1fae5;
+    border-color: #10b981;
+    border-style: solid;
+    border-width: 3px;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+/* 날짜 전체 부담 초과 스타일 */
+.schedule-grid th.date-burden-warning,
+.schedule-grid td.date-burden-warning {
+    border-left: 3px dashed #f97316 !important;
+    border-right: 3px dashed #f97316 !important;
+}
+
+.schedule-grid th.date-burden-warning {
+    border-top: 3px dashed #f97316 !important;
+}
+
+.schedule-grid tr:last-child td.date-burden-warning {
+    border-bottom: 3px dashed #f97316 !important;
+}
+
+.tool-btn-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+}
+
+.tool-btn-warning:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+.time-slot-header {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.assigned-subject {
+    background: #e0e7ff;
+    border: 1px solid #6366f1;
+    border-radius: 0.25rem;
+    padding: 0.375rem;
+    margin-bottom: 0.25rem;
+    cursor: move;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.assigned-subject:hover {
+    background: #c7d2fe;
+    border-color: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.assigned-subject.dragging {
+    opacity: 0.7;
+    transform: rotate(3deg);
+    z-index: 1000;
+}
+
+.assigned-subject-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4f46e5;
+    margin-bottom: 0.125rem;
+}
+
+.assigned-subject-info {
+    font-size: 0.7rem;
+    color: #6b7280;
+}
+
+.assigned-subject-actions {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.assigned-subject:hover .assigned-subject-actions {
+    opacity: 1;
+}
+
+.btn-remove-subject {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-remove-subject:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+.assigned-subject {
+    position: relative;
+}
+
+/* 컨텍스트 메뉴 스타일 */
+.context-menu-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.context-menu-item:hover {
+    background-color: #f8f9fa;
+}
+
+.context-menu-item:first-child {
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.context-menu-item:last-child {
+    border-radius: 0 0 0.375rem 0.375rem;
+}
+
+/* 우측 패널 제거 - 상단으로 이동 */
+
+.info-section {
+    background: white;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #dee2e6;
+}
+
+.info-section h6 {
+    color: #374151;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* 도구 버튼 */
+.tool-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* 상단 헤더의 도구 버튼들 */
+.schedule-header .tool-buttons {
+    margin-bottom: 0;
+    align-items: center;
+    height: 100%;
+}
+
+.tool-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.tool-btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+}
+
+.tool-btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.tool-btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.tool-btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.tool-btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.tool-btn-success:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.tool-btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: white;
+}
+
+.tool-btn-danger:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+}
+
+.tool-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* 통계 카드 */
+.stat-card {
+    background: white;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    text-align: center;
+    border: 1px solid #dee2e6;
+    margin-bottom: 0.75rem;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+/* 진행률 표시 */
+.progress-container {
+    background: white;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #dee2e6;
+}
+
+.progress-bar-custom {
+    background: #e5e7eb;
+    border-radius: 0.5rem;
+    height: 0.5rem;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+    height: 100%;
+    border-radius: 0.5rem;
+    transition: width 0.3s ease;
+}
+
+/* 반응형 */
+@media (max-width: 1200px) {
+    .schedule-content {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .left-panel {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    .schedule-grid-container {
+        overflow-x: auto;
+    }
+    
+    /* 모바일에서 상단 바 조정 */
+    .col-md-4 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-stats {
+        flex-direction: row;
+        justify-content: space-around;
+    }
+    
+    .stat-item {
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.3);
+        padding: 0.25rem 0;
+        margin: 0 0.5rem;
+    }
+}
+
+/* 스크롤바 스타일링 */
+/* 좌측 패널 스크롤바 스타일링 */
+.left-panel::-webkit-scrollbar,
+.subject-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.left-panel::-webkit-scrollbar-track,
+.subject-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.left-panel::-webkit-scrollbar-thumb,
+.subject-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.left-panel::-webkit-scrollbar-thumb:hover,
+.subject-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="schedule-manager-container">
+    <!-- 상단 헤더 -->
+    <div class="schedule-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <!-- 왼쪽: 추천 내용 -->
+                <div class="col-md-6">
+                    <div class="banner-content">
+                        <div class="banner-icon">
+                            <i class="fas fa-lightbulb"></i>
+                        </div>
+                        <div class="banner-text" id="bannerText">
+                            <span class="banner-label">추천:</span>
+                            <button class="btn btn-sm btn-outline-light me-2" id="bannerDetailsBtn" title="상세 정보">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                            <span class="banner-recommendations" id="bannerRecommendations">
+                                과목을 배치하면 추천이 표시됩니다
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 오른쪽: 버튼들 -->
+                <div class="col-md-6 text-end">
+                    <div class="tool-buttons d-flex align-items-center justify-content-end gap-3">
+                        <!-- 통합 자동생성 드롭다운 -->
+                        <div class="dropdown">
+                            <button class="tool-btn tool-btn-primary dropdown-toggle" type="button" id="autoGenerateDropdown" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                                <i class="fas fa-magic me-2"></i>
+                                자동생성
+                                <span class="badge bg-light text-dark ms-2" id="timeBadge">고품질</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="autoGenerateDropdown" style="z-index: 9999999; position: fixed;">
+                                <li><h6 class="dropdown-header">생성 모드 선택</h6></li>
+                                <li><a class="dropdown-item" href="#" data-time="10" data-text="빠름">
+                                    🚀 빠름 (10초)
+                                    <small class="text-muted d-block">빠른 확인용</small>
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" data-time="60" data-text="균형">
+                                    ⚖️ 균형 (1분)
+                                    <small class="text-muted d-block">일반 사용</small>
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" data-time="120" data-text="고품질">
+                                    🎯 고품질 (2분)
+                                    <small class="text-muted d-block">최적 결과</small>
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" data-time="custom" data-text="사용자 설정">
+                                    ⚙️ 사용자 설정
+                                </a></li>
+                            </ul>
+                        </div>
+                        
+                        <!-- 사용자 설정 입력 (숨김) -->
+                        <div id="customTimeInput" class="me-2" style="display: none;">
+                            <div class="input-group input-group-sm" style="width: 120px;">
+                                <input type="number" class="form-control" id="customTimeValue" min="5" max="300" value="120" placeholder="초">
+                                <span class="input-group-text">초</span>
+                            </div>
+                        </div>
+                        <button class="tool-btn tool-btn-warning" id="validateBtn">
+                            <i class="fas fa-check-circle"></i>
+                            검증
+                        </button>
+                        <button class="tool-btn tool-btn-danger" id="clearAllBtn">
+                            <i class="fas fa-trash"></i>
+                            초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 메인 컨텐츠 -->
+    <div class="container-fluid">
+        <div class="schedule-content">
+            <!-- 좌측 패널 -->
+            <div class="left-panel">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-book text-primary"></i>
+                        과목
+                    </h6>
+                    <small class="text-muted">
+                        <span id="sidebarAssignedCount">0</span>/<span id="sidebarTotalCount">0</span>
+                    </small>
+                </div>
+                
+                <!-- 과목 목록 -->
+                <div class="subject-list" id="subjectList">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        로딩중...
+                    </div>
+                </div>
+
+                <!-- 스마트 추천 (숨김 - 상단 배너로 이동됨) -->
+                <div class="recommendation-section mb-3" style="display: none;">
+                    <h6 class="mb-2">
+                        <i class="fas fa-lightbulb text-warning"></i>
+                        추천 과목
+                    </h6>
+                    <div id="recommendedSubjects">
+                        <div class="text-center text-muted py-2">
+                            <small>과목을 배치하면 추천이 표시됩니다</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 빠른 도구 영역은 더 이상 사용하지 않음 (모든 버튼이 상단으로 이동됨) -->
+            </div>
+
+            <!-- 중앙 메인 영역 -->
+            <div class="main-panel">
+                <div class="schedule-grid-container">
+                    <table class="schedule-grid" id="scheduleGrid">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">교시</th>
+                                <!-- 날짜 헤더는 JavaScript로 동적 생성 -->
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleGridBody">
+                            <!-- 시간표 그리드는 JavaScript로 동적 생성 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 학생 부담 분석 패널 -->
+        <div class="student-burden-panel mt-3" id="studentBurdenPanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar text-info me-2"></i>
+                        학생 부담 분석
+                    </h6>
+                    <button class="btn btn-sm btn-outline-secondary" id="toggleBurdenPanel" type="button">
+                        <i class="fas fa-chevron-up" id="burdenPanelIcon"></i>
+                    </button>
+                </div>
+                <div class="card-body" id="burdenPanelBody">
+                    <!-- 일반 과목 부담 분석 -->
+                    <div class="burden-section mb-4" id="generalBurdenSection">
+                        <h6 class="text-secondary mb-3">
+                            <i class="fas fa-books me-2"></i>
+                            하루 시험 과목 수 분포
+                            <small class="text-muted">(최대 <span id="maxExamsPerDay">설정 없음</span>개)</small>
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered burden-table" id="generalBurdenTable">
+                                <thead>
+                                    <tr class="table-light">
+                                        <th class="burden-header">과목 수</th>
+                                        <!-- 날짜 헤더는 JavaScript로 동적 생성 -->
+                                    </tr>
+                                </thead>
+                                <tbody id="generalBurdenTableBody">
+                                    <!-- 부담 분석 데이터는 JavaScript로 동적 생성 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 어려운 과목 부담 분석 -->
+                    <div class="burden-section" id="hardBurdenSection">
+                        <h6 class="text-secondary mb-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            어려운 과목 수 분포
+                            <small class="text-muted">(최대 <span id="maxHardExamsPerDay">설정 없음</span>개)</small>
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered burden-table" id="hardBurdenTable">
+                                <thead>
+                                    <tr class="table-light">
+                                        <th class="burden-header">과목 수</th>
+                                        <!-- 날짜 헤더는 JavaScript로 동적 생성 -->
+                                    </tr>
+                                </thead>
+                                <tbody id="hardBurdenTableBody">
+                                    <!-- 어려운 과목 부담 분석 데이터는 JavaScript로 동적 생성 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- 학생 부담 상세 정보 모달 -->
+<div class="modal fade" id="burdenDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="burdenDetailTitle">
+                    <i class="fas fa-users me-2"></i>
+                    상세 정보
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="burdenDetailContent">
+                    <!-- 상세 내용이 여기에 동적으로 생성됩니다 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 로딩 오버레이 -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
+                <h5 id="loadingTitle">처리 중...</h5>
+                <p class="text-muted" id="loadingMessage">잠시만 기다려주세요.</p>
+                
+                <!-- 진행률 바 (자동생성 시에만 표시) -->
+                <div id="progressContainer" style="display: none;" class="mt-3">
+                    <div class="progress mb-2" style="height: 8px;">
+                        <div id="progressBar" class="progress-bar bg-primary" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <small class="text-muted" id="progressText">0%</small>
+                </div>
+                
+                <!-- 단계별 메시지 (자동생성 시에만 표시) -->
+                <div id="stepContainer" style="display: none;" class="mt-3">
+                    <div class="text-start">
+                        <small class="text-muted" id="currentStep">준비 중...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 전역 변수
+let examInfo = {};
+let subjectInfo = {};
+let scheduleData = {};
+let selectedSlot = null;
+let isDragging = false;
+let validationCache = new Map(); // 검증 결과 캐시
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', async function() {
+    // 제약조건 데이터 로드
+    await loadConstraintData();
+    
+    // 시간표 매니저 초기화
+    initializeScheduleManager();
+    
+    // 저장된 수동 배치 데이터 로드
+    await loadManualSchedule();
+    
+    // 초기 추천 생성
+    setTimeout(() => {
+        updateRecommendationBanner();
+    }, 1000);
+});
+
+async function initializeScheduleManager() {
+    try {
+        showLoading('데이터 로딩', '시험 정보와 과목 정보를 불러오는 중...');
+        
+        // 데이터 로드
+        await loadExamInfo();
+        await loadSubjectInfo();
+        
+        console.log('데이터 로드 완료, UI 렌더링 시작...');
+        
+        // UI 렌더링
+        try {
+            renderSubjectList();
+            console.log('과목 목록 렌더링 완료');
+            
+            renderScheduleGrid();
+            console.log('시간표 그리드 렌더링 완료');
+            
+            updateStatistics();
+            console.log('통계 업데이트 완료');
+        } catch (renderError) {
+            console.error('UI 렌더링 오류:', renderError);
+            throw renderError;
+        }
+        
+        console.log('시간표 관리자 초기화 완료');
+        
+        // 학생 부담 분석 패널 초기화
+        initializeBurdenPanelToggle();
+        
+        // 학생 부담 설정이 있거나 설정이 없어도 분석은 실행 (단순 카운트만)
+        console.log('학생 부담 분석 초기화 시작...');
+        console.log('window.studentBurdenConfig:', window.studentBurdenConfig);
+        console.log('constraintData:', constraintData);
+        
+        // 패널이 접혀있는지 확인
+        const panelBody = document.getElementById('burdenPanelBody');
+        console.log('패널 상태:', panelBody ? '존재함' : '없음');
+        if (panelBody) {
+            console.log('패널 클래스:', panelBody.className);
+            console.log('패널이 접혀있는가?', panelBody.classList.contains('collapsed'));
+        }
+        
+        renderStudentBurdenAnalysis();
+        
+        // 렌더링 후 패널 전체 상태 확인
+        setTimeout(() => {
+            const panel = document.getElementById('studentBurdenPanel');
+            const panelBody = document.getElementById('burdenPanelBody');
+            console.log('=== 패널 최종 상태 확인 ===');
+            console.log('패널 존재:', panel ? '있음' : '없음');
+            console.log('패널 display:', panel ? panel.style.display : 'N/A');
+            console.log('패널 높이:', panel ? panel.offsetHeight : 'N/A');
+            console.log('패널 바디 존재:', panelBody ? '있음' : '없음');
+            console.log('패널 바디 클래스:', panelBody ? panelBody.className : 'N/A');
+            console.log('패널 바디 display:', panelBody ? panelBody.style.display : 'N/A');
+            console.log('패널 바디 높이:', panelBody ? panelBody.offsetHeight : 'N/A');
+            
+            // 테이블들도 확인
+            const generalTable = document.getElementById('generalBurdenTable');
+            const hardTable = document.getElementById('hardBurdenTable');
+            console.log('일반 테이블 높이:', generalTable ? generalTable.offsetHeight : 'N/A');
+            console.log('어려운 테이블 높이:', hardTable ? hardTable.offsetHeight : 'N/A');
+            
+            // 패널 위치 정보 확인
+            if (panel) {
+                const rect = panel.getBoundingClientRect();
+                console.log('패널 위치 정보:');
+                console.log('  top:', rect.top, 'left:', rect.left);
+                console.log('  width:', rect.width, 'height:', rect.height);
+                console.log('  화면에 보이는가?', rect.top >= 0 && rect.top <= window.innerHeight);
+                console.log('  현재 스크롤 위치:', window.pageYOffset);
+                console.log('  패널까지 스크롤 필요:', rect.top + window.pageYOffset);
+                
+                // 패널이 화면 밖에 있으면 스크롤해서 보이게 하기
+                if (rect.top < 0 || rect.top > window.innerHeight) {
+                    console.log('패널이 화면 밖에 있어서 스크롤합니다');
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }, 100);
+        
+        // 모든 작업 완료 후 로딩 숨기기 (약간의 지연을 두어 UI 렌더링 완료 보장)
+        setTimeout(() => {
+            hideLoading();
+        }, 500);
+        
+    } catch (error) {
+        console.error('초기화 오류:', error);
+        hideLoading();
+        showAlert('데이터를 불러오는 중 오류가 발생했습니다: ' + error.message, 'danger');
+    }
+}
+
+// 시험 정보 로드
+async function loadExamInfo() {
+    try {
+        console.log('시험 정보 로드 시작...');
+        const response = await fetch('/api/data/exam_info.json');
+        console.log('시험 정보 API 응답:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('시험 정보 API 오류:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        examInfo = await response.json();
+        console.log('시험 정보 로드 완료:', examInfo);
+    } catch (error) {
+        console.error('시험 정보 로드 오류:', error);
+        // 기본값 설정
+        examInfo = {
+            "시험날짜": {"제1일": "2024-10-01", "제2일": "2024-10-02", "제3일": "2024-10-03"},
+            "시험타임": {
+                "제1일1교시": {"시작": "09:00:00", "종료": "10:20:00", "진행시간": 80},
+                "제1일2교시": {"시작": "10:40:00", "종료": "11:30:00", "진행시간": 50},
+                "제1일3교시": {"시작": "11:50:00", "종료": "13:30:00", "진행시간": 100},
+                "제2일1교시": {"시작": "09:00:00", "종료": "10:20:00", "진행시간": 80},
+                "제2일2교시": {"시작": "10:40:00", "종료": "11:30:00", "진행시간": 50},
+                "제2일3교시": {"시작": "11:50:00", "종료": "13:30:00", "진행시간": 100},
+                "제3일1교시": {"시작": "09:00:00", "종료": "10:20:00", "진행시간": 80},
+                "제3일2교시": {"시작": "10:40:00", "종료": "11:30:00", "진행시간": 50},
+                "제3일3교시": {"시작": "11:50:00", "종료": "13:30:00", "진행시간": 100}
+            }
+        };
+        console.log('기본 시험 정보 사용:', examInfo);
+    }
+}
+
+// 과목 정보 로드
+async function loadSubjectInfo() {
+    try {
+        console.log('과목 정보 로드 시작...');
+        const response = await fetch('/api/data/subject_info.json');
+        console.log('과목 정보 API 응답:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('과목 정보 API 오류:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        subjectInfo = await response.json();
+        console.log('과목 정보 로드 완료:', Object.keys(subjectInfo).length + '개 과목');
+    } catch (error) {
+        console.error('과목 정보 로드 오류:', error);
+        // 기본값 설정
+        subjectInfo = {
+            "국어": {"시간": 50, "학년": "1", "담당교사": ["김교사"], "듣기평가": false},
+            "수학": {"시간": 80, "학년": "1", "담당교사": ["이교사"], "듣기평가": false},
+            "영어": {"시간": 50, "학년": "1", "담당교사": ["박교사"], "듣기평가": true},
+            "과학": {"시간": 80, "학년": "1", "담당교사": ["최교사"], "듣기평가": false},
+            "사회": {"시간": 50, "학년": "1", "담당교사": ["정교사"], "듣기평가": false}
+        };
+        console.log('기본 과목 정보 사용:', Object.keys(subjectInfo).length + '개 과목');
+    }
+}
+
+// 과목 목록 렌더링
+function renderSubjectList() {
+    const subjectList = document.getElementById('subjectList');
+    
+    if (Object.keys(subjectInfo).length === 0) {
+        subjectList.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-exclamation-circle"></i>
+                과목 정보가 없습니다.
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    for (const [subjectName, subject] of Object.entries(subjectInfo)) {
+        // 이미 배치된 과목인지 확인
+        const isAssigned = isSubjectAssigned(subjectName);
+        
+        html += `
+            <div class="subject-item ${isAssigned ? 'opacity-50' : ''}" 
+                 draggable="true" 
+                 data-subject="${subjectName}"
+                 data-duration="${subject.시간 || 50}"
+                 data-grade="${subject.학년 || ''}"
+                 data-listening="${subject.듣기평가 || false}">
+                <div class="subject-name">
+                    ${subjectName}
+                    ${subject.듣기평가 ? '<span class="badge bg-warning ms-1">듣기</span>' : ''}
+                </div>
+                <div class="subject-info">
+                    <span class="subject-duration">${subject.시간 || 50}분</span>
+                    <span class="subject-grade ms-2">${subject.학년 || ''}학년</span>
+                    ${constraintData.subjectStats[subjectName] && constraintData.subjectStats[subjectName].student_count ? 
+                        `<span class="subject-student-count ms-2">${constraintData.subjectStats[subjectName].student_count}명</span>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    subjectList.innerHTML = html;
+    
+    // 드래그 이벤트 추가
+    addDragEventListeners();
+    
+    // 총 과목 수 업데이트 (사이드바만)
+    const totalSubjects = Object.keys(subjectInfo).length;
+    const sidebarTotalCount = document.getElementById('sidebarTotalCount');
+    
+    if (sidebarTotalCount) sidebarTotalCount.textContent = totalSubjects;
+}
+
+// 시간표 그리드 렌더링
+function renderScheduleGrid() {
+    const scheduleGrid = document.getElementById('scheduleGrid');
+    const thead = scheduleGrid.querySelector('thead tr');
+    const tbody = document.getElementById('scheduleGridBody');
+    
+    // 날짜 정보 추출 (동적으로 모든 날짜 처리)
+    const examDates = examInfo.시험날짜 || {};
+    const validDates = Object.entries(examDates)
+        .filter(([day, date]) => date && date !== 'nan' && date.trim() !== '')
+        .sort((a, b) => {
+            // 제1일, 제2일... 순서로 정렬
+            const numA = parseInt(a[0].match(/\d+/)?.[0] || '0');
+            const numB = parseInt(b[0].match(/\d+/)?.[0] || '0');
+            return numA - numB;
+        }); // 무제한 날짜 지원 (7일 제한 제거)
+    
+    if (validDates.length === 0) {
+        // 기본값 설정
+        validDates.push(['제1일', '2024-10-01'], ['제2일', '2024-10-02'], ['제3일', '2024-10-03']);
+    }
+    
+    // 헤더 생성 (날짜)
+    thead.innerHTML = '<th style="width: 80px;">교시</th>';
+    validDates.forEach(([dayLabel, date]) => {
+        const dateObj = new Date(date);
+        const formattedDate = dateObj.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+        
+        thead.innerHTML += `
+            <th class="text-center">
+                <div class="fw-bold">${dayLabel}</div>
+                <small class="opacity-75">${formattedDate}</small>
+            </th>
+        `;
+    });
+    
+    // 전체 사용 가능한 교시들을 먼저 파악
+    const allAvailablePeriods = new Set();
+    const datePeriods = examInfo.date_periods || {};
+    
+    Object.values(datePeriods).forEach(dayPeriods => {
+        Object.keys(dayPeriods).forEach(periodNum => {
+            const periodData = dayPeriods[periodNum];
+            if (!periodData._deleted) {
+                allAvailablePeriods.add(parseInt(periodNum));
+            }
+        });
+    });
+    
+    // 교시가 없으면 빈 배열 사용 (하드코딩 제거)
+    const periodsToRender = allAvailablePeriods.size > 0 ? 
+        Array.from(allAvailablePeriods).sort((a, b) => a - b) : 
+        [];
+    
+    console.log('전체 렌더링 교시들:', periodsToRender);
+    
+    // 교시 데이터가 없는 경우 경고
+    if (periodsToRender.length === 0) {
+        console.warn('교시 데이터가 없습니다. /exam-info에서 시험 정보를 설정해주세요.');
+        tbody.innerHTML = '<tr><td colspan="100%" class="text-center text-muted p-4">시험 정보가 설정되지 않았습니다.<br>/exam-info 페이지에서 시험 날짜와 교시를 설정해주세요.</td></tr>';
+        return;
+    }
+    
+    // 날짜별로 사용 가능한 교시 매핑 생성
+    const dateToAvailablePeriods = {};
+    validDates.forEach(([dayLabel]) => {
+        const dayMatch = dayLabel.match(/제(\d+)일/);
+        if (dayMatch) {
+            const dayNum = dayMatch[1];
+            const dayPeriods = datePeriods[dayNum] || {};
+            dateToAvailablePeriods[dayLabel] = new Set();
+            
+            Object.keys(dayPeriods).forEach(periodNum => {
+                const periodData = dayPeriods[periodNum];
+                if (!periodData._deleted) {
+                    dateToAvailablePeriods[dayLabel].add(parseInt(periodNum));
+                }
+            });
+            
+            // 기본값 없음 (완전히 동적 처리)
+        }
+    });
+    
+    console.log('날짜별 사용가능 교시:', dateToAvailablePeriods);
+    
+    // 교시 행 생성 (날짜별 개별 교시 처리)
+    tbody.innerHTML = '';
+    periodsToRender.forEach(period => {
+        let rowHtml = `<th class="text-center fw-bold">${period}교시</th>`;
+        
+        validDates.forEach(([dayLabel]) => {
+            const isAvailable = dateToAvailablePeriods[dayLabel] && 
+                               dateToAvailablePeriods[dayLabel].has(period);
+            
+            if (isAvailable) {
+                const slotId = `${dayLabel}${period}교시`;
+                const timeInfo = getTimeSlotInfo(slotId);
+                
+                rowHtml += `
+                    <td class="schedule-cell" 
+                        data-slot="${slotId}" 
+                        data-day="${dayLabel}" 
+                        data-period="${period}">
+                        <div class="time-slot-header">
+                            ${timeInfo ? `${timeInfo.start} - ${timeInfo.end} (${timeInfo.duration}분)` : `${period}교시`}
+                        </div>
+                                                 <div class="slot-content" data-slot="${slotId}">
+                             ${renderAssignedSubjects(slotId)}
+                         </div>
+                    </td>
+                `;
+            } else {
+                // 삭제된 슬롯은 회색으로 표시
+                rowHtml += `
+                    <td class="schedule-cell disabled" 
+                        style="background-color: #f8f9fa; border: 1px dashed #dee2e6;">
+                        <div class="time-slot-header text-muted">
+                            <small>사용 안함</small>
+                        </div>
+                    </td>
+                `;
+            }
+        });
+        
+        tbody.innerHTML += `<tr>${rowHtml}</tr>`;
+    });
+    
+    // 드롭 이벤트 추가
+    addDropEventListeners();
+    
+    // 셀 클릭 이벤트 추가
+    addCellClickListeners();
+    
+    // 총 슬롯 수는 더 이상 표시하지 않음
+}
+
+// 시간 슬롯 정보 가져오기 (날짜별 개별 시간 지원)
+function getTimeSlotInfo(slotId) {
+    // date_periods에서 찾기 (우선 - 날짜별 개별 시간)
+    const dayMatch = slotId.match(/제(\d+)일(\d+)교시/);
+    if (dayMatch && examInfo.date_periods) {
+        const dayNum = dayMatch[1];
+        const periodNum = dayMatch[2];
+        const dayPeriods = examInfo.date_periods[dayNum];
+        
+        if (dayPeriods && dayPeriods[periodNum] && !dayPeriods[periodNum]._deleted) {
+            const periodData = dayPeriods[periodNum];
+            const duration = parseInt(periodData.duration) || 50;
+            const startTime = periodData.start_time;
+            const endTime = periodData.end_time;
+            
+            console.log(`슬롯 ${slotId}: ${startTime} - ${endTime} (${duration}분) [JSON에서 직접 로드]`);
+            
+            return {
+                start: startTime,
+                end: endTime,
+                duration: duration
+            };
+        }
+    }
+    
+    // fallback: 시험타임에서 찾기 (기존 방식)
+    const timeData = examInfo.시험타임 && examInfo.시험타임[slotId];
+    if (timeData && timeData.시작 && timeData.종료) {
+        console.log(`슬롯 ${slotId}: ${timeData.시작} - ${timeData.종료} (${timeData.진행시간}분) [시험타임에서 로드]`);
+        
+        return {
+            start: timeData.시작.slice(0, 5), // HH:MM 형식
+            end: timeData.종료.slice(0, 5),
+            duration: timeData.진행시간 || 50
+        };
+    }
+    
+    console.warn(`슬롯 ${slotId}: 시간 정보를 찾을 수 없습니다.`);
+    return null;
+}
+
+// 배치된 과목들을 렌더링
+function renderAssignedSubjects(slotId) {
+    const assignedSubjects = scheduleData[slotId] || [];
+    let html = '';
+    
+    assignedSubjects.forEach(subjectName => {
+        const subject = subjectInfo[subjectName];
+        if (subject) {
+            html += `
+                <div class="assigned-subject" 
+                     data-subject="${subjectName}" 
+                     data-slot="${slotId}"
+                     draggable="true"
+                     title="더블클릭: 제거, 우클릭: 메뉴">
+                    <div class="assigned-subject-name">${subjectName}</div>
+                    <div class="assigned-subject-info">
+                        ${subject.시간 || 50}분 | ${subject.학년 || ''}학년
+                        ${constraintData.subjectStats[subjectName] && constraintData.subjectStats[subjectName].student_count ? 
+                            ` | ${constraintData.subjectStats[subjectName].student_count}명` : ''}
+                        ${subject.듣기평가 ? '<span class="badge bg-warning ms-1">듣기</span>' : ''}
+                    </div>
+                    <div class="assigned-subject-actions">
+                        <button class="btn-remove-subject" title="제거" onclick="removeSubjectFromSlot('${subjectName}', '${slotId}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    return html;
+}
+
+// 과목이 이미 배치되었는지 확인
+function isSubjectAssigned(subjectName) {
+    for (const slot of Object.keys(scheduleData)) {
+        if (scheduleData[slot] && scheduleData[slot].includes(subjectName)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 슬롯에서 과목 제거
+function removeSubjectFromSlot(subjectName, slotId) {
+    console.log('과목 제거 시작:', subjectName, 'from', slotId);
+    
+    if (scheduleData[slotId] && Array.isArray(scheduleData[slotId])) {
+        scheduleData[slotId] = scheduleData[slotId].filter(subject => subject !== subjectName);
+        
+        // 빈 배열이면 슬롯 삭제
+        if (scheduleData[slotId].length === 0) {
+            delete scheduleData[slotId];
+        }
+        
+        console.log('과목 제거 완료:', subjectName);
+        
+        // 자동 저장
+        saveManualSchedule();
+        
+        // UI 업데이트
+        renderScheduleGrid();
+        renderSubjectList();
+        updateStatistics();
+        updateRecommendationBanner(); // 배너 추천 업데이트
+        
+        // 학생 부담 분석 업데이트 (설정 여부와 관계없이 실행)
+        if (!document.getElementById('burdenPanelBody').classList.contains('collapsed')) {
+            renderStudentBurdenAnalysis();
+        }
+        
+        showAlert(`${subjectName}이(가) 제거되었습니다.`, 'info');
+    } else {
+        console.error('제거할 과목을 찾을 수 없습니다:', subjectName, slotId);
+    }
+}
+
+// 과목 더블클릭 처리 (제거)
+function handleSubjectDoubleClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const subjectName = e.currentTarget.dataset.subject;
+    const slotId = e.currentTarget.dataset.slot;
+    
+    console.log('과목 더블클릭:', subjectName, 'in', slotId);
+    
+    if (confirm(`${subjectName}을(를) 제거하시겠습니까?`)) {
+        removeSubjectFromSlot(subjectName, slotId);
+    }
+}
+
+// 과목 우클릭 처리 (컨텍스트 메뉴)
+function handleSubjectRightClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const subjectName = e.currentTarget.dataset.subject;
+    const slotId = e.currentTarget.dataset.slot;
+    
+    console.log('과목 우클릭:', subjectName, 'in', slotId);
+    
+    // 간단한 컨텍스트 메뉴 표시
+    showContextMenu(e, subjectName, slotId);
+}
+
+// 컨텍스트 메뉴 표시
+function showContextMenu(e, subjectName, slotId) {
+    // 기존 컨텍스트 메뉴 제거
+    const existingMenu = document.querySelector('.context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+    
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.cssText = `
+        position: fixed;
+        top: ${e.clientY}px;
+        left: ${e.clientX}px;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        min-width: 150px;
+    `;
+    
+    menu.innerHTML = `
+        <div class="context-menu-item" onclick="removeSubjectFromSlot('${subjectName}', '${slotId}'); this.parentElement.remove();">
+            <i class="fas fa-trash text-danger me-2"></i>
+            제거
+        </div>
+        <div class="context-menu-item" onclick="this.parentElement.remove();">
+            <i class="fas fa-times text-muted me-2"></i>
+            취소
+        </div>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    // 메뉴 외부 클릭 시 닫기
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu() {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        });
+    }, 100);
+}
+
+// 드래그 이벤트 리스너 추가
+function addDragEventListeners() {
+    // 좌측 과목 목록의 과목들
+    const subjectItems = document.querySelectorAll('.subject-item');
+    console.log('과목 아이템 드래그 이벤트 추가:', subjectItems.length, '개');
+    
+    subjectItems.forEach((item, index) => {
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        item.removeEventListener('dragstart', handleDragStart);
+        item.removeEventListener('dragend', handleDragEnd);
+        
+        // 새 이벤트 리스너 추가
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+        
+        console.log(`과목 ${index}: ${item.dataset.subject}에 드래그 이벤트 추가됨`);
+    });
+    
+    // 시간표에 배치된 과목들
+    const assignedSubjects = document.querySelectorAll('.assigned-subject');
+    console.log('배치된 과목 드래그 이벤트 추가:', assignedSubjects.length, '개');
+    
+    assignedSubjects.forEach((item, index) => {
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        item.removeEventListener('dragstart', handleDragStart);
+        item.removeEventListener('dragend', handleDragEnd);
+        item.removeEventListener('dblclick', handleSubjectDoubleClick);
+        item.removeEventListener('contextmenu', handleSubjectRightClick);
+        
+        // 새 이벤트 리스너 추가
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+        item.addEventListener('dblclick', handleSubjectDoubleClick);
+        item.addEventListener('contextmenu', handleSubjectRightClick);
+        
+        console.log(`배치된 과목 ${index}: ${item.dataset.subject}에 이벤트 추가됨`);
+    });
+    
+    console.log('드래그 이벤트 리스너 추가 완료');
+}
+
+// 드롭 이벤트 리스너 추가
+function addDropEventListeners() {
+    const scheduleCells = document.querySelectorAll('.schedule-cell');
+    
+    console.log('드롭 이벤트 리스너 추가 중...', scheduleCells.length, '개 셀');
+    
+    scheduleCells.forEach((cell, index) => {
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        cell.removeEventListener('dragover', handleDragOver);
+        cell.removeEventListener('drop', handleDrop);
+        cell.removeEventListener('dragleave', handleDragLeave);
+        
+        // 새 이벤트 리스너 추가
+        cell.addEventListener('dragover', handleDragOver);
+        cell.addEventListener('drop', handleDrop);
+        cell.addEventListener('dragleave', handleDragLeave);
+        
+        console.log(`셀 ${index}: ${cell.dataset.slot}에 드롭 이벤트 추가됨`);
+    });
+    
+    console.log('드롭 이벤트 리스너 추가 완료');
+}
+
+// 셀 클릭 이벤트 리스너 추가
+function addCellClickListeners() {
+    const scheduleCells = document.querySelectorAll('.schedule-cell');
+    
+    scheduleCells.forEach(cell => {
+        cell.addEventListener('click', function() {
+            // 이전 선택 해제
+            document.querySelectorAll('.schedule-cell').forEach(c => c.classList.remove('selected'));
+            
+            // 현재 셀 선택
+            cell.classList.add('selected');
+            selectedSlot = cell.dataset.slot;
+            
+            // 선택된 슬롯 정보 표시
+            showSelectedSlotInfo(selectedSlot);
+        });
+    });
+}
+
+// 드래그 시작
+function handleDragStart(e) {
+    console.log('드래그 시작!');
+    isDragging = true;
+    const subjectName = e.target.dataset.subject;
+    
+    console.log('드래그 대상:', subjectName);
+    
+    e.dataTransfer.setData('text/plain', subjectName);
+    e.target.classList.add('dragging');
+    
+    // 유효한 드롭 존 하이라이트
+    highlightValidDropZones(subjectName);
+    
+    console.log('드래그 시작 완료');
+}
+
+// 드래그 종료
+function handleDragEnd(e) {
+    isDragging = false;
+    e.target.classList.remove('dragging');
+    
+    // 모든 드롭 존 하이라이트 제거
+    document.querySelectorAll('.schedule-cell').forEach(cell => {
+        cell.classList.remove('drop-zone', 'drop-zone-invalid', 'drop-zone-warning', 'drop-zone-recommended', 'date-burden-warning');
+        cell.title = ''; // 툴팁도 제거
+    });
+    
+    // 헤더의 날짜 테두리도 제거
+    document.querySelectorAll('.schedule-grid th').forEach(header => {
+        header.classList.remove('date-burden-warning');
+        header.title = '';
+    });
+    
+    // 캐시 정리 (메모리 절약)
+    validationCache.clear();
+}
+
+// 드래그 오버
+function handleDragOver(e) {
+    e.preventDefault();
+    
+    const cell = e.currentTarget;
+    if (cell.classList.contains('drop-zone')) {
+        cell.style.borderColor = '#0ea5e9';
+    }
+}
+
+// 드래그 리브
+function handleDragLeave(e) {
+    const cell = e.currentTarget;
+    if (cell.classList.contains('drop-zone-invalid')) {
+        cell.style.borderColor = '#ef4444';
+    } else if (cell.classList.contains('drop-zone')) {
+        cell.style.borderColor = '#0ea5e9';
+    }
+}
+
+// 드롭 처리
+function handleDrop(e) {
+    e.preventDefault();
+    
+    console.log('드롭 이벤트 발생!');
+    
+    const subjectName = e.dataTransfer.getData('text/plain');
+    const cell = e.currentTarget;
+    const slotId = cell.dataset.slot;
+    
+    console.log('드롭 정보:', { subjectName, slotId, cellClasses: cell.className });
+    
+    if (!subjectName) {
+        console.error('드롭된 과목 이름이 없습니다!');
+        return;
+    }
+    
+    if (!slotId) {
+        console.error('드롭된 슬롯 ID가 없습니다!');
+        return;
+    }
+    
+    console.log('과목 배치 시작:', subjectName, '->', slotId);
+    
+    // 캐시에서 검증 결과 조회 (드래그 시 계산된 결과 재사용)
+    let validationResult = validationCache.get(slotId);
+    
+    // 캐시에 없는 경우에만 새로 계산 (예외적 상황)
+    if (!validationResult) {
+        console.log('캐시 미스! 새로 계산:', slotId);
+        validationResult = canPlaceSubjectInSlot(subjectName, slotId);
+    } else {
+        console.log('캐시 히트! 재사용:', slotId);
+    }
+    
+    // 배치 불가능한 경우 중단
+    if (!validationResult.canPlace) {
+        console.log('배치 불가:', validationResult.reasons);
+        const detailedReasons = validationResult.reasons.join('\n\n');
+        showDetailedAlert('배치 불가', `${subjectName}을(를) ${slotId}에 배치할 수 없습니다.`, detailedReasons, 'error');
+        return;
+    }
+    
+    // 배치 가능하지만 경고사항이 있는 경우
+    if (validationResult.warnings && validationResult.warnings.length > 0) {
+        const detailedWarnings = validationResult.warnings.join('\n\n');
+        showDetailedAlert('배치 완료 (주의사항 있음)', 
+                         `${subjectName}이(가) ${slotId}에 배치되었습니다.`, 
+                         detailedWarnings, 'warning');
+    } else {
+        showAlert(`${subjectName}이(가) ${slotId}에 배치되었습니다.`, 'success');
+    }
+    
+    // 과목 배치
+    assignSubjectToSlot(subjectName, slotId);
+    
+    // UI 업데이트
+    renderScheduleGrid();
+    renderSubjectList();
+    updateStatistics();
+    updateRecommendationBanner(); // 배너 추천 업데이트
+    
+    // 학생 부담 분석 업데이트 (설정 여부와 관계없이 실행)
+    if (!document.getElementById('burdenPanelBody').classList.contains('collapsed')) {
+        renderStudentBurdenAnalysis();
+    }
+    
+    // 배치된 과목들에 드래그 이벤트 다시 추가
+    addDragEventListeners();
+    
+    console.log('과목 배치 완료!');
+}
+
+// ================== 제약조건 검증 함수들 ==================
+
+// 전역 변수로 제약조건 데이터 저장
+let constraintData = {
+    subjectConflicts: {},
+    individualConflicts: [],
+    sameGradeConflicts: [],
+    teacherConflicts: [],
+    subjectStats: {},
+    listeningConflicts: [],
+    subjectConstraints: {},
+    teacherConstraints: {},
+    studentBurdenConfig: {},
+    hardSubjects: {}
+};
+
+// 제약조건 데이터 로드
+async function loadConstraintData() {
+    try {
+        const responses = await Promise.all([
+            fetch('/uploads/subject_conflicts.json'),
+            fetch('/uploads/individual_conflicts.json'),
+            fetch('/uploads/same_grade_conflicts.json'),
+            fetch('/uploads/teacher_conflicts.json'),
+            fetch('/uploads/subject_stats.json'),
+            fetch('/uploads/custom_listening_conflicts.json'),
+            fetch('/uploads/subject_constraints.json'),
+            fetch('/uploads/custom_teacher_constraints.json'),
+            fetch('/uploads/student_burden_config.json'),
+            fetch('/uploads/hard_subjects_config.json')
+        ]);
+        
+        const [
+            subjectConflicts,
+            individualConflicts,
+            sameGradeConflicts,
+            teacherConflicts,
+            subjectStats,
+            listeningConflicts,
+            subjectConstraints,
+            teacherConstraints,
+            studentBurdenConfig,
+            hardSubjects
+        ] = await Promise.all(responses.map(r => r.ok ? r.json() : {}));
+        
+        constraintData = {
+            subjectConflicts: subjectConflicts || {},
+            individualConflicts: individualConflicts || [],
+            sameGradeConflicts: sameGradeConflicts || [],
+            teacherConflicts: teacherConflicts || [],
+            subjectStats: subjectStats || {},
+            listeningConflicts: listeningConflicts || [],
+            subjectConstraints: subjectConstraints || {},
+            teacherConstraints: teacherConstraints || {},
+            studentBurdenConfig: studentBurdenConfig || {},
+            hardSubjects: hardSubjects || {}
+        };
+        
+        // 학생 부담 설정값 업데이트 (실제 설정값만 사용, 기본값 없음)
+        if (studentBurdenConfig && Object.keys(studentBurdenConfig).length > 0) {
+            window.studentBurdenConfig = {};
+            constraintData.studentBurdenConfig = {}; // constraintData에도 동일하게 저장
+            
+            // max_exams_per_day가 실제로 설정되어 있을 때만 사용
+            if (studentBurdenConfig.max_exams_per_day !== null && studentBurdenConfig.max_exams_per_day !== undefined) {
+                window.studentBurdenConfig.max_exams_per_day = studentBurdenConfig.max_exams_per_day;
+                constraintData.studentBurdenConfig.max_exams_per_day = studentBurdenConfig.max_exams_per_day;
+            }
+            
+            // max_hard_exams_per_day가 실제로 설정되어 있을 때만 사용
+            if (studentBurdenConfig.max_hard_exams_per_day !== null && studentBurdenConfig.max_hard_exams_per_day !== undefined) {
+                window.studentBurdenConfig.max_hard_exams_per_day = studentBurdenConfig.max_hard_exams_per_day;
+                constraintData.studentBurdenConfig.max_hard_exams_per_day = studentBurdenConfig.max_hard_exams_per_day;
+            }
+        } else {
+            // 파일이 없거나 빈 경우
+            window.studentBurdenConfig = {};
+            constraintData.studentBurdenConfig = {};
+        }
+        
+        console.log('제약조건 데이터 로드 완료:', constraintData);
+    } catch (error) {
+        console.error('제약조건 데이터 로드 실패:', error);
+    }
+}
+
+// 과목이 특정 슬롯에 배치 가능한지 확인하는 메인 함수
+function canPlaceSubjectInSlot(subjectName, slotId, currentSchedule = scheduleData) {
+    const result = {
+        canPlace: true,
+        reasons: [],
+        warnings: []
+    };
+    
+    // 1. 시간 제한 확인
+    const timeCheck = checkTimeConstraint(subjectName, slotId);
+    if (!timeCheck.valid) {
+        result.canPlace = false;
+        result.reasons.push(timeCheck.reason);
+    }
+    
+    // 2. 과목별 제약조건 확인
+    if (!checkSubjectConstraints(subjectName, slotId)) {
+        result.canPlace = false;
+        result.reasons.push('과목별 제약조건에 의해 해당 슬롯에 배치할 수 없습니다');
+    }
+    
+    // 3. 교사 제약조건 확인
+    if (!checkTeacherConstraints(subjectName, slotId)) {
+        result.canPlace = false;
+        result.reasons.push('담당 교사의 제약조건에 의해 해당 슬롯에 배치할 수 없습니다');
+    }
+    
+    // 현재 슬롯에 배치된 과목들 가져오기
+    const existingSubjects = currentSchedule[slotId] || [];
+    
+    // 4. 과목 충돌 확인
+    const subjectConflictResult = checkSubjectConflicts(subjectName, existingSubjects);
+    if (!subjectConflictResult.canPlace) {
+        result.canPlace = false;
+        result.reasons.push(...subjectConflictResult.reasons);
+    }
+    
+    // 5. 교사 충돌 확인
+    const teacherConflictResult = checkTeacherConflicts(subjectName, existingSubjects);
+    if (!teacherConflictResult.canPlace) {
+        result.canPlace = false;
+        result.reasons.push(...teacherConflictResult.reasons);
+    }
+    
+    // 6. 학생 충돌 확인
+    const studentConflictResult = checkStudentConflicts(subjectName, existingSubjects);
+    if (!studentConflictResult.canPlace) {
+        result.canPlace = false;
+        result.reasons.push(...studentConflictResult.reasons);
+    }
+    
+    // 7. 듣기평가 충돌 확인
+    const listeningConflictResult = checkListeningConflicts(subjectName, existingSubjects);
+    if (!listeningConflictResult.canPlace) {
+        result.canPlace = false;
+        result.reasons.push(...listeningConflictResult.reasons);
+    }
+    
+    // 8. 날짜별 학생 부담 확인 (하드 제약조건 - 오류로 처리)
+    const burdenResult = checkStudentBurden(subjectName, slotId, currentSchedule);
+    if (burdenResult.errors && burdenResult.errors.length > 0) {
+        result.canPlace = false;
+        result.reasons.push(...burdenResult.errors);
+    }
+    if (burdenResult.warnings && burdenResult.warnings.length > 0) {
+        result.warnings.push(...burdenResult.warnings);
+    }
+    
+    // 9. 필수 동반 과목 확인 (경고로만 표시 - 개별 배치 시에는 허용)
+    const companionResult = checkRequiredCompanionSubjects(subjectName, existingSubjects, currentSchedule);
+    if (companionResult.warnings && companionResult.warnings.length > 0) {
+        result.warnings.push(...companionResult.warnings);
+    }
+    
+    return result;
+}
+
+// 1. 시간 제한 확인
+function checkTimeConstraint(subjectName, slotId) {
+    const subject = subjectInfo[subjectName];
+    if (!subject) return { valid: false, reason: `과목 정보를 찾을 수 없습니다: ${subjectName}` };
+    
+    const subjectDuration = subject.시간 || 50;
+    const timeInfo = getTimeSlotInfo(slotId);
+    const slotDuration = timeInfo ? timeInfo.duration : 50;
+    
+    if (subjectDuration <= slotDuration) {
+        return { valid: true };
+    } else {
+        return { 
+            valid: false, 
+            reason: `시험 시간이 슬롯 허용 시간을 초과합니다.\n${subjectName} 시험 시간: ${subjectDuration}분\n${slotId} 허용 시간: ${slotDuration}분`
+        };
+    }
+}
+
+// 2. 과목별 제약조건 확인
+function checkSubjectConstraints(subjectName, slotId) {
+    const constraints = constraintData.subjectConstraints[subjectName];
+    if (!constraints) return true;
+    
+    // 표준화된 슬롯 ID로 변환하여 확인
+    const standardizedSlotId = standardizeSlotId(slotId);
+    return !constraints[standardizedSlotId];
+}
+
+// 3. 교사 제약조건 확인
+function checkTeacherConstraints(subjectName, slotId) {
+    const subject = subjectInfo[subjectName];
+    if (!subject || !subject.담당교사) return true;
+    
+    const standardizedSlotId = standardizeSlotId(slotId);
+    
+    for (const teacher of subject.담당교사) {
+        const teacherConstraints = constraintData.teacherConstraints[teacher];
+        if (teacherConstraints && teacherConstraints[standardizedSlotId]) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// 4. 과목 충돌 확인 (피해야 하는 과목과 같이 배치해야 하는 과목 모두 확인)
+function checkSubjectConflicts(subjectName, existingSubjects) {
+    const result = { canPlace: true, reasons: [] };
+    
+    for (const existingSubject of existingSubjects) {
+        // 같은 과목은 제외 (자기 자신과 비교 방지)
+        if (existingSubject === subjectName) continue;
+        
+        // 정렬된 키로 충돌 확인
+        const conflictKey1 = [subjectName, existingSubject].sort().join('_');
+        const conflictKey2 = [existingSubject, subjectName].sort().join('_');
+        
+        const conflict = constraintData.subjectConflicts[conflictKey1] || constraintData.subjectConflicts[conflictKey2];
+        
+        if (conflict) {
+            if (conflict.type === 'avoid_same_time') {
+                result.canPlace = false;
+                result.reasons.push(`${subjectName}과 ${existingSubject}는 같은 시간에 배치할 수 없습니다 (${conflict.reason})`);
+            }
+            // same_time 타입은 여기서는 제약이 아님 (오히려 권장)
+        }
+    }
+    
+    return result;
+}
+
+// 5. 교사 충돌 확인
+function checkTeacherConflicts(subjectName, existingSubjects) {
+    const result = { canPlace: true, reasons: [] };
+    const subject = subjectInfo[subjectName];
+    
+    if (!subject || !subject.담당교사) return result;
+    
+    for (const existingSubject of existingSubjects) {
+        // 같은 과목은 제외 (자기 자신과 비교 방지)
+        if (existingSubject === subjectName) continue;
+        
+        const existingSubjectInfo = subjectInfo[existingSubject];
+        if (!existingSubjectInfo || !existingSubjectInfo.담당교사) continue;
+        
+        // 공통 교사 확인
+        const commonTeachers = subject.담당교사.filter(teacher => 
+            existingSubjectInfo.담당교사.includes(teacher)
+        );
+        
+        if (commonTeachers.length > 0) {
+            result.canPlace = false;
+            result.reasons.push(`${subjectName}과 ${existingSubject}는 공통 담당교사로 인해 같은 슬롯에 배치할 수 없습니다.\n공통 담당교사: ${commonTeachers.join(', ')}`);
+        }
+    }
+    
+    return result;
+}
+
+// 6. 학생 충돌 확인
+function checkStudentConflicts(subjectName, existingSubjects) {
+    const result = { canPlace: true, reasons: [] };
+    
+    for (const existingSubject of existingSubjects) {
+        // 같은 과목은 제외 (자기 자신과 비교 방지)
+        if (existingSubject === subjectName) continue;
+        
+        let hasConflict = false;
+        let conflictReason = '';
+        let commonStudents = [];
+        
+        // 방법 1: individual_conflicts 또는 same_grade_conflicts 데이터 확인
+        if (constraintData.individualConflicts && Array.isArray(constraintData.individualConflicts) && constraintData.individualConflicts.length > 0) {
+            // individual_conflicts.json 데이터 사용
+            const conflict = constraintData.individualConflicts.find(c => 
+                (c.subject1 === subjectName && c.subject2 === existingSubject) ||
+                (c.subject1 === existingSubject && c.subject2 === subjectName)
+            );
+            if (conflict) {
+                hasConflict = true;
+                // 실제 공통 학생 정보도 찾아서 표시
+                if (constraintData.subjectStats) {
+                    const subjectStudents = constraintData.subjectStats[subjectName]?.students || [];
+                    const existingStudents = constraintData.subjectStats[existingSubject]?.students || [];
+                    commonStudents = subjectStudents.filter(student => 
+                        existingStudents.includes(student)
+                    );
+                    if (commonStudents.length > 0) {
+                        const studentList = commonStudents.slice(0, 10).join(', ') + (commonStudents.length > 10 ? ` 외 ${commonStudents.length - 10}명` : '');
+                        conflictReason = `개별 학생 충돌 (${commonStudents.length}명): ${studentList}`;
+                    } else {
+                        conflictReason = `개별 학생 충돌 (individual_conflicts)`;
+                    }
+                } else {
+                    conflictReason = `개별 학생 충돌 (individual_conflicts)`;
+                }
+            }
+        } else if (constraintData.sameGradeConflicts && Array.isArray(constraintData.sameGradeConflicts)) {
+            // same_grade_conflicts.json 데이터 사용
+            const conflict = constraintData.sameGradeConflicts.find(c => 
+                (c.subject1 === subjectName && c.subject2 === existingSubject) ||
+                (c.subject1 === existingSubject && c.subject2 === subjectName)
+            );
+            if (conflict) {
+                hasConflict = true;
+                conflictReason = `같은 학년 충돌 (${conflict.common_grades?.join(', ')}학년)`;
+            }
+        }
+        
+        // 방법 2: 학생 목록 직접 비교 (기존 방식, 백업용)
+        if (!hasConflict && constraintData.subjectStats) {
+            const subjectStudents = constraintData.subjectStats[subjectName]?.students || [];
+            const existingStudents = constraintData.subjectStats[existingSubject]?.students || [];
+            
+            if (subjectStudents.length > 0 && existingStudents.length > 0) {
+                // 공통 학생 확인
+                commonStudents = subjectStudents.filter(student => 
+                    existingStudents.includes(student)
+                );
+                
+                if (commonStudents.length > 0) {
+                    hasConflict = true;
+                    const studentList = commonStudents.length > 0 ? 
+                        (commonStudents.slice(0, 10).join(', ') + (commonStudents.length > 10 ? ` 외 ${commonStudents.length - 10}명` : '')) : 
+                        '';
+                    conflictReason = `공통 수강 학생 (${commonStudents.length}명): ${studentList}`;
+                }
+            }
+        }
+        
+        if (hasConflict) {
+            result.canPlace = false;
+            result.reasons.push(`${subjectName}과 ${existingSubject}는 같은 슬롯에 배치할 수 없습니다.\n${conflictReason}`);
+        }
+    }
+    
+    return result;
+}
+
+// 7. 듣기평가 충돌 확인
+function checkListeningConflicts(subjectName, existingSubjects) {
+    const result = { canPlace: true, reasons: [] };
+    
+    // 현재 과목이 듣기평가가 있는지 확인
+    const subjectInfo_current = subjectInfo[subjectName];
+    const hasListening = subjectInfo_current?.듣기평가 || false;
+    
+    if (!hasListening) return result;
+    
+    // 기존 과목들 중 듣기평가가 있는 과목이 있는지 확인
+    for (const existingSubject of existingSubjects) {
+        // 같은 과목은 제외 (자기 자신과 비교 방지)
+        if (existingSubject === subjectName) continue;
+        
+        const existingSubjectInfo = subjectInfo[existingSubject];
+        if (existingSubjectInfo?.듣기평가) {
+            result.canPlace = false;
+            result.reasons.push(`${subjectName}과 ${existingSubject}는 모두 듣기평가가 있어 같은 슬롯에 배치할 수 없습니다`);
+        }
+    }
+    
+    return result;
+}
+
+// 8. 날짜별 학생 부담 확인
+function checkStudentBurden(subjectName, slotId, currentSchedule) {
+    const result = { errors: [], warnings: [] };
+    const day = getDateFromSlotId(slotId);
+    const config = constraintData.studentBurdenConfig;
+    
+    // 설정이 없으면 체크하지 않음
+    if (!config || (!config.max_exams_per_day && !config.max_hard_exams_per_day)) {
+        console.log(`DEBUG: 학생 부담 설정 없음. config:`, config);
+        return result;
+    }
+    
+    console.log(`DEBUG: ${day}에 ${subjectName} 배치 시 학생 부담 체크`);
+    
+    // 공통 함수를 사용하여 가상 스케줄에서 학생 부담 계산
+    const dayBurden = calculateDayStudentBurden(day, currentSchedule, subjectName, slotId);
+    
+    console.log(`DEBUG: 학생별 시험 수:`, dayBurden.studentExamCounts);
+    console.log(`DEBUG: 학생별 어려운 시험 수:`, dayBurden.studentHardExamCounts);
+    
+    // 일반 시험 수 제한 확인
+    if (config.max_exams_per_day) {
+        const overloadedStudents = Object.entries(dayBurden.studentExamCounts)
+            .filter(([student, count]) => count > config.max_exams_per_day);
+        
+        if (overloadedStudents.length > 0) {
+            const overloadedStudentList = overloadedStudents
+                .map(([student, count]) => `${student}(${count}개)`)
+                .slice(0, 10);
+            const displayList = overloadedStudentList.join(', ') + (overloadedStudents.length > 10 ? ` 외 ${overloadedStudents.length - 10}명` : '');
+            result.errors.push(`${overloadedStudents.length}명의 학생이 하루 최대 시험 수(${config.max_exams_per_day}개)를 초과하므로 배치할 수 없습니다.\n초과 학생: ${displayList}`);
+        }
+    }
+    
+    // 어려운 시험 수 제한 확인
+    if (config.max_hard_exams_per_day) {
+        const hardOverloadedStudents = Object.entries(dayBurden.studentHardExamCounts)
+            .filter(([student, count]) => count > config.max_hard_exams_per_day);
+        
+        if (hardOverloadedStudents.length > 0) {
+            const hardOverloadedStudentList = hardOverloadedStudents
+                .map(([student, count]) => `${student}(${count}개)`)
+                .slice(0, 10);
+            const displayList = hardOverloadedStudentList.join(', ') + (hardOverloadedStudents.length > 10 ? ` 외 ${hardOverloadedStudents.length - 10}명` : '');
+            result.errors.push(`${hardOverloadedStudents.length}명의 학생이 하루 최대 어려운 시험 수(${config.max_hard_exams_per_day}개)를 초과하므로 배치할 수 없습니다.\n초과 학생: ${displayList}`);
+        }
+    }
+    
+    return result;
+}
+
+// 9. 필수 동반 과목 확인 (같이 배치해야 하는 과목들)
+function checkRequiredCompanionSubjects(subjectName, existingSubjects, currentSchedule) {
+    const result = { errors: [], warnings: [] };
+    
+    // 현재 과목과 same_time 관계인 과목들 확인
+    Object.values(constraintData.subjectConflicts).forEach(conflict => {
+        if (conflict.type === 'same_time') {
+            let companionSubject = null;
+            
+            if (conflict.subject1 === subjectName) {
+                companionSubject = conflict.subject2;
+            } else if (conflict.subject2 === subjectName) {
+                companionSubject = conflict.subject1;
+            }
+            
+            if (companionSubject) {
+                // 동반 과목이 같은 슬롯에 있는지 확인
+                if (existingSubjects.includes(companionSubject)) {
+                    // 이미 같은 슬롯에 있음 - 완벽한 상태
+                    return;
+                }
+                
+                // 동반 과목이 다른 슬롯에 배치되어 있는지 확인
+                let companionSlot = null;
+                for (const [slotId, subjects] of Object.entries(currentSchedule)) {
+                    if (subjects && subjects.includes(companionSubject)) {
+                        companionSlot = slotId;
+                        break;
+                    }
+                }
+                
+                if (companionSlot) {
+                    // 다른 슬롯에 이미 배치되어 있음 - 강한 경고
+                    result.warnings.push(`${companionSubject}이(가) 이미 ${companionSlot}에 배치되어 있습니다. ${subjectName}과 함께 같은 슬롯에 배치해야 합니다.`);
+                } else {
+                    // 아직 배치되지 않음 - 권장사항
+                    result.warnings.push(`${subjectName}과 ${companionSubject}은(는) 함께 배치하는 것이 권장됩니다.`);
+                }
+            }
+        }
+    });
+    
+    return result;
+}
+
+// 유틸리티 함수들
+function standardizeSlotId(slotId) {
+    // "제1일1교시" -> "제1일_1교시" 형태로 변환
+    return slotId.replace(/(\d)교시/, '_$1교시');
+}
+
+function getDateFromSlotId(slotId) {
+    // "제1일1교시" -> "제1일" 추출
+    const match = slotId.match(/^(제\d+일)/);
+    return match ? match[1] : null;
+}
+
+// 캐싱을 활용한 유효한 드롭 존 하이라이트 함수
+function highlightValidDropZones(subjectName) {
+    // 캐시 초기화
+    validationCache.clear();
+    
+    // 동반 과목이 배치된 슬롯 찾기
+    const companionSlots = findCompanionSubjectSlots(subjectName);
+    const dateIssues = new Set(); // 날짜별 부담 문제가 있는 날짜들
+    
+    document.querySelectorAll('.schedule-cell').forEach(cell => {
+        // disabled 셀은 제외
+        if (cell.classList.contains('disabled')) {
+            return;
+        }
+        
+        const slotId = cell.dataset.slot;
+        if (!slotId) return; // slotId가 없는 셀은 제외
+        
+        // 검증 수행 및 캐시에 저장
+        const validationResult = canPlaceSubjectInSlot(subjectName, slotId);
+        validationCache.set(slotId, validationResult); // 캐시에 저장
+        
+        if (validationResult.canPlace) {
+            cell.classList.add('drop-zone');
+            
+            // 동반 과목이 있는 슬롯인지 확인
+            if (companionSlots.includes(slotId)) {
+                cell.classList.add('drop-zone-recommended');
+                cell.title = `권장 슬롯: 동반 과목이 이미 배치되어 있습니다.\n${validationResult.warnings.join('\n')}`;
+            } else if (validationResult.warnings.length > 0) {
+                cell.classList.add('drop-zone-warning');
+                cell.title = validationResult.warnings.join('\n');
+            }
+        } else {
+            // 슬롯별 문제와 날짜별 문제 구분
+            const hasSlotDirectIssue = validationResult.reasons.some(reason => 
+                reason.includes('교사 충돌') || 
+                reason.includes('학생 충돌') || 
+                reason.includes('중복 배치') ||
+                reason.includes('듣기평가') ||
+                reason.includes('동반 과목')
+            );
+            
+            const hasDateBurdenIssue = validationResult.reasons.some(reason => 
+                reason.includes('하루 최대 시험 수') || 
+                reason.includes('어려운 시험 수')
+            );
+            
+            if (hasSlotDirectIssue) {
+                // 슬롯 직접 문제 - 기존 방식 (빨간 배경)
+                cell.classList.add('drop-zone-invalid');
+                cell.title = validationResult.reasons.join('\n');
+            } else if (hasDateBurdenIssue) {
+                // 날짜 부담 문제만 있는 경우 - 날짜 전체 테두리용으로 분류
+                const dayLabel = getDateFromSlotId(slotId);
+                dateIssues.add(dayLabel);
+            } else {
+                // 기타 문제
+                cell.classList.add('drop-zone-invalid');
+                cell.title = validationResult.reasons.join('\n');
+            }
+        }
+    });
+    
+    // 날짜별 부담 문제가 있는 경우 해당 날짜 전체에 테두리 적용
+    dateIssues.forEach(dayLabel => {
+        // 해당 날짜의 모든 셀과 헤더에 테두리 클래스 추가
+        document.querySelectorAll('.schedule-cell').forEach(cell => {
+            const slotId = cell.dataset.slot;
+            if (slotId && getDateFromSlotId(slotId) === dayLabel) {
+                cell.classList.add('date-burden-warning');
+                if (!cell.title) {
+                    cell.title = `⚠️ ${dayLabel}: 학생 부담 초과로 배치 불가`;
+                }
+            }
+        });
+        
+        // 헤더에도 테두리 적용 (날짜 헤더 찾기)
+        document.querySelectorAll('.schedule-grid th').forEach(header => {
+            if (header.textContent.includes(dayLabel)) {
+                header.classList.add('date-burden-warning');
+                header.title = `⚠️ ${dayLabel}: 학생 부담 초과로 배치 불가`;
+            }
+        });
+    });
+}
+
+// 동반 과목이 배치된 슬롯들 찾기
+function findCompanionSubjectSlots(subjectName) {
+    const companionSlots = [];
+    
+    Object.values(constraintData.subjectConflicts).forEach(conflict => {
+        if (conflict.type === 'same_time') {
+            let companionSubject = null;
+            
+            if (conflict.subject1 === subjectName) {
+                companionSubject = conflict.subject2;
+            } else if (conflict.subject2 === subjectName) {
+                companionSubject = conflict.subject1;
+            }
+            
+            if (companionSubject) {
+                // 동반 과목이 배치된 슬롯 찾기
+                for (const [slotId, subjects] of Object.entries(scheduleData)) {
+                    if (subjects && subjects.includes(companionSubject)) {
+                        companionSlots.push(slotId);
+                    }
+                }
+            }
+        }
+    });
+    
+    return companionSlots;
+}
+
+// ================== 완성된 시간표 유효성 검증 ==================
+
+// 전체 시간표의 유효성을 검사하는 함수
+function validateCompleteSchedule(schedule = scheduleData) {
+    const validationResult = {
+        isValid: true,
+        errors: [],
+        warnings: [],
+        statistics: {
+            totalSubjects: Object.keys(subjectInfo).length,
+            assignedSubjects: Object.values(schedule).flat().length,
+            unassignedSubjects: [],
+            conflictCount: 0,
+            overloadedStudents: 0
+        }
+    };
+    
+    // 1. 미배정 과목 확인
+    const assignedSubjects = new Set(Object.values(schedule).flat());
+    const allSubjects = Object.keys(subjectInfo);
+    validationResult.statistics.unassignedSubjects = allSubjects.filter(subject => !assignedSubjects.has(subject));
+    
+    if (validationResult.statistics.unassignedSubjects.length > 0) {
+        validationResult.errors.push(`미배정 과목이 ${validationResult.statistics.unassignedSubjects.length}개 있습니다: ${validationResult.statistics.unassignedSubjects.join(', ')}`);
+        validationResult.isValid = false;
+    }
+    
+    // 2. 각 슬롯별 제약조건 검증
+    let totalConflicts = 0;
+    for (const [slotId, subjects] of Object.entries(schedule)) {
+        if (!subjects || subjects.length === 0) continue;
+        
+        // 각 과목에 대해 해당 슬롯에 배치 가능한지 확인
+        for (const subject of subjects) {
+            const validation = canPlaceSubjectInSlot(subject, slotId, schedule);
+            
+            if (!validation.canPlace) {
+                validationResult.errors.push(`${slotId}의 ${subject}: ${validation.reasons.join(', ')}`);
+                validationResult.isValid = false;
+                totalConflicts++;
+            }
+            
+            if (validation.warnings.length > 0) {
+                validationResult.warnings.push(`${slotId}의 ${subject}: ${validation.warnings.join(', ')}`);
+            }
+        }
+    }
+    
+    // 3. 전체 시간표에서 same_time 제약조건 확인
+    const sameTimeViolations = checkGlobalSameTimeConstraints(schedule);
+    if (sameTimeViolations.length > 0) {
+        validationResult.errors.push(...sameTimeViolations);
+        validationResult.isValid = false;
+        totalConflicts += sameTimeViolations.length;
+    }
+    
+    validationResult.statistics.conflictCount = totalConflicts;
+    
+    // 3. 전체 학생 부담 분석
+    const studentBurdenAnalysis = analyzeStudentBurden(schedule);
+    validationResult.statistics.overloadedStudents = studentBurdenAnalysis.overloadedStudents;
+    
+    if (studentBurdenAnalysis.errors.length > 0) {
+        validationResult.errors.push(...studentBurdenAnalysis.errors);
+        validationResult.isValid = false;
+    }
+    
+    if (studentBurdenAnalysis.warnings.length > 0) {
+        validationResult.warnings.push(...studentBurdenAnalysis.warnings);
+    }
+    
+    return validationResult;
+}
+
+// 전체 시간표에서 same_time 제약조건 확인
+function checkGlobalSameTimeConstraints(schedule) {
+    const violations = [];
+    
+    // 모든 same_time 제약조건 확인
+    Object.values(constraintData.subjectConflicts).forEach(conflict => {
+        if (conflict.type === 'same_time') {
+            const subject1 = conflict.subject1;
+            const subject2 = conflict.subject2;
+            
+            // 두 과목이 모두 배치되어 있는지 확인
+            let subject1Slot = null;
+            let subject2Slot = null;
+            
+            for (const [slotId, subjects] of Object.entries(schedule)) {
+                if (subjects.includes(subject1)) subject1Slot = slotId;
+                if (subjects.includes(subject2)) subject2Slot = slotId;
+            }
+            
+            // 둘 다 배치되어 있지만 다른 슬롯에 있는 경우
+            if (subject1Slot && subject2Slot && subject1Slot !== subject2Slot) {
+                violations.push(`${subject1}과 ${subject2}는 같은 시간에 배치되어야 하지만 다른 슬롯에 있습니다 (${subject1}: ${subject1Slot}, ${subject2}: ${subject2Slot})`);
+            }
+            
+            // 하나만 배치되어 있는 경우 (경고 수준)
+            else if ((subject1Slot && !subject2Slot) || (!subject1Slot && subject2Slot)) {
+                const placedSubject = subject1Slot ? subject1 : subject2;
+                const unplacedSubject = subject1Slot ? subject2 : subject1;
+                violations.push(`${placedSubject}이 배치되었지만 함께 배치되어야 하는 ${unplacedSubject}이 배치되지 않았습니다`);
+            }
+        }
+    });
+    
+    return violations;
+}
+
+// 전체 학생 부담 분석
+function analyzeStudentBurden(schedule) {
+    const result = { errors: [], warnings: [], overloadedStudents: 0 };
+    const config = constraintData.studentBurdenConfig;
+    
+    // 설정이 없으면 체크하지 않음
+    if (!config || (!config.max_exams_per_day && !config.max_hard_exams_per_day)) {
+        return result;
+    }
+    
+    // 날짜별로 그룹화
+    const dateGroups = {};
+    for (const [slotId, subjects] of Object.entries(schedule)) {
+        const date = getDateFromSlotId(slotId);
+        if (!date) continue;
+        
+        if (!dateGroups[date]) dateGroups[date] = [];
+        dateGroups[date].push(...subjects);
+    }
+    
+    // 각 날짜별로 학생 부담 확인
+    let totalOverloadedStudents = new Set();
+    
+    for (const [date, subjects] of Object.entries(dateGroups)) {
+        // 각 학생별 실제 응시 과목 수 계산 (중복 제거)
+        const studentSubjects = {}; // 학생별 응시 과목 목록
+        const studentExamCounts = {};
+        const studentHardExamCounts = {};
+        
+        // 먼저 각 학생이 실제로 응시하는 과목들을 수집
+        for (const subject of subjects) {
+            const students = constraintData.subjectStats[subject]?.students || [];
+            
+            for (const student of students) {
+                if (!studentSubjects[student]) {
+                    studentSubjects[student] = new Set();
+                }
+                studentSubjects[student].add(subject);
+            }
+        }
+        
+        // 각 학생별로 실제 시험 수 계산
+        for (const [student, subjectSet] of Object.entries(studentSubjects)) {
+            studentExamCounts[student] = subjectSet.size;
+            
+            // 어려운 시험 수 계산
+            studentHardExamCounts[student] = 0;
+            for (const subject of subjectSet) {
+                if (constraintData.hardSubjects && constraintData.hardSubjects[subject]) {
+                    studentHardExamCounts[student]++;
+                }
+            }
+        }
+        
+        // 제한 초과 학생 확인
+        let dayOverloadedStudents = 0;
+        let dayHardOverloadedStudents = 0;
+        
+        // 일반 시험 수 제한 확인
+        if (config.max_exams_per_day) {
+            Object.entries(studentExamCounts).forEach(([student, count]) => {
+                if (count > config.max_exams_per_day) {
+                    dayOverloadedStudents++;
+                    totalOverloadedStudents.add(student);
+                }
+            });
+            
+            if (dayOverloadedStudents > 0) {
+                result.warnings.push(`${date}: ${dayOverloadedStudents}명의 학생이 하루 최대 시험 수(${config.max_exams_per_day}개)를 초과합니다`);
+            }
+        }
+        
+        // 어려운 시험 수 제한 확인
+        if (config.max_hard_exams_per_day) {
+            Object.entries(studentHardExamCounts).forEach(([student, count]) => {
+                if (count > config.max_hard_exams_per_day) {
+                    dayHardOverloadedStudents++;
+                    totalOverloadedStudents.add(student);
+                }
+            });
+            
+            if (dayHardOverloadedStudents > 0) {
+                result.warnings.push(`${date}: ${dayHardOverloadedStudents}명의 학생이 하루 최대 어려운 시험 수(${config.max_hard_exams_per_day}개)를 초과합니다`);
+            }
+        }
+    }
+    
+    result.overloadedStudents = totalOverloadedStudents.size;
+    
+    return result;
+}
+
+// 시간표 검증 결과를 UI에 표시하는 함수
+function displayValidationResult(validationResult) {
+    const { isValid, errors, warnings, statistics } = validationResult;
+    
+    let message = '=== 시간표 검증 결과 ===\n\n';
+    
+    // 통계 정보
+    message += `📊 통계:\n`;
+    message += `- 전체 과목: ${statistics.totalSubjects}개\n`;
+    message += `- 배정된 과목: ${statistics.assignedSubjects}개\n`;
+    message += `- 미배정 과목: ${statistics.unassignedSubjects.length}개\n`;
+    message += `- 충돌 수: ${statistics.conflictCount}개\n`;
+    message += `- 부담 초과 학생: ${statistics.overloadedStudents}명\n\n`;
+    
+    // 전체 상태
+    if (isValid) {
+        message += '✅ 시간표가 유효합니다!\n\n';
+    } else {
+        message += '❌ 시간표에 문제가 있습니다.\n\n';
+    }
+    
+    // 오류 목록
+    if (errors.length > 0) {
+        message += `🚫 오류 (${errors.length}개):\n`;
+        errors.forEach((error, index) => {
+            message += `${index + 1}. ${error}\n`;
+        });
+        message += '\n';
+    }
+    
+    // 경고 목록
+    if (warnings.length > 0) {
+        message += `⚠️ 경고 (${warnings.length}개):\n`;
+        warnings.forEach((warning, index) => {
+            message += `${index + 1}. ${warning}\n`;
+        });
+        message += '\n';
+    }
+    
+    // 미배정 과목 목록
+    if (statistics.unassignedSubjects.length > 0) {
+        message += `📝 미배정 과목:\n`;
+        statistics.unassignedSubjects.forEach((subject, index) => {
+            message += `${index + 1}. ${subject}\n`;
+        });
+    }
+    
+    // 결과를 콘솔과 알림으로 표시
+    console.log(message);
+    
+    // 간단한 요약을 알림으로 표시
+    const summaryMessage = isValid 
+        ? `시간표가 유효합니다! (${statistics.assignedSubjects}/${statistics.totalSubjects} 과목 배정)`
+        : `시간표에 ${errors.length}개의 오류와 ${warnings.length}개의 경고가 있습니다.`;
+    
+    showAlert(summaryMessage, isValid ? 'success' : 'warning');
+}
+
+// 상세 검증 결과를 모달로 표시하는 함수
+function displayDetailedValidationResult(validationResult) {
+    const { isValid, errors, warnings, statistics } = validationResult;
+    
+    // 요약 정보 생성
+    let summaryHtml = `
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card ${isValid ? 'border-success' : 'border-danger'}">
+                    <div class="card-body text-center">
+                        <h4 class="${isValid ? 'text-success' : 'text-danger'}">
+                            <i class="fas fa-${isValid ? 'check-circle' : 'exclamation-triangle'}"></i>
+                            ${isValid ? '유효한 시간표' : '문제가 있는 시간표'}
+                        </h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6>통계</h6>
+                        <small>
+                            • 전체 과목: ${statistics.totalSubjects}개<br>
+                            • 배정된 과목: ${statistics.assignedSubjects}개<br>
+                            • 미배정 과목: ${statistics.unassignedSubjects.length}개<br>
+                            • 충돌 수: ${statistics.conflictCount}개<br>
+                            • 부담 초과 학생: ${statistics.overloadedStudents}명
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 오류 목록
+    let errorsHtml = '';
+    if (errors.length > 0) {
+        errorsHtml = `
+            <div class="card border-danger mb-3">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        오류 (${errors.length}개) - 반드시 해결해야 함
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        ${errors.map((error, index) => `
+                            <div class="alert alert-danger py-2 mb-2">
+                                <strong>${index + 1}.</strong> ${error.replace(/\n/g, '<br>')}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 경고 목록
+    let warningsHtml = '';
+    if (warnings.length > 0) {
+        warningsHtml = `
+            <div class="card border-warning mb-3">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-exclamation-circle"></i>
+                        경고 (${warnings.length}개) - 검토 권장
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        ${warnings.map((warning, index) => `
+                            <div class="alert alert-warning py-2 mb-2">
+                                <strong>${index + 1}.</strong> ${warning.replace(/\n/g, '<br>')}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 미배정 과목 목록
+    let unassignedHtml = '';
+    if (statistics.unassignedSubjects.length > 0) {
+        unassignedHtml = `
+            <div class="card border-info mb-3">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list"></i>
+                        미배정 과목 (${statistics.unassignedSubjects.length}개)
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        ${statistics.unassignedSubjects.map(subject => `
+                            <span class="badge bg-secondary">${subject}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 성공 메시지
+    let successHtml = '';
+    if (isValid && errors.length === 0 && warnings.length === 0) {
+        successHtml = `
+            <div class="alert alert-success">
+                <h5><i class="fas fa-check-circle"></i> 완벽한 시간표입니다!</h5>
+                <p>모든 제약조건을 만족하며 문제가 없습니다.</p>
+            </div>
+        `;
+    }
+    
+    const fullContent = summaryHtml + successHtml + errorsHtml + warningsHtml + unassignedHtml;
+    
+    showDetailedAlert(
+        '시간표 검증 결과',
+        `${isValid ? '✅' : '❌'} 검증 완료: ${errors.length}개 오류, ${warnings.length}개 경고`,
+        fullContent,
+        isValid ? 'info' : 'error',
+        'modal-xl'  // 더 큰 모달 사용
+    );
+}
+
+// 과목을 슬롯에 배치
+function assignSubjectToSlot(subjectName, slotId) {
+    console.log('assignSubjectToSlot 호출:', { subjectName, slotId, currentScheduleData: scheduleData });
+    
+    // 기존에 배치된 곳에서 제거
+    for (const slot of Object.keys(scheduleData)) {
+        if (scheduleData[slot] && Array.isArray(scheduleData[slot])) {
+            scheduleData[slot] = scheduleData[slot].filter(subject => subject !== subjectName);
+            if (scheduleData[slot].length === 0) {
+                delete scheduleData[slot];
+            }
+        }
+    }
+    
+    // 새 슬롯에 배치 (배열이 없으면 생성)
+    if (!scheduleData[slotId]) {
+        scheduleData[slotId] = [];
+    }
+    
+    // 중복 체크
+    if (!scheduleData[slotId].includes(subjectName)) {
+        scheduleData[slotId].push(subjectName);
+        console.log('과목 배치 완료:', { slotId, assignedSubjects: scheduleData[slotId] });
+        
+        // 자동 저장
+        saveManualSchedule();
+    } else {
+        console.log('이미 배치된 과목입니다:', subjectName);
+    }
+}
+
+// 선택된 슬롯 정보 표시 (현재는 콘솔에만 로그 출력)
+function showSelectedSlotInfo(slotId) {
+    // 우측 패널이 제거되어 정보 표시 영역이 없으므로 콘솔에 로그만 출력
+    const timeInfo = getTimeSlotInfo(slotId);
+    const assignedSubjects = scheduleData[slotId] || [];
+    
+    console.log('선택된 슬롯:', slotId);
+    if (timeInfo) {
+        console.log('시간 정보:', `${timeInfo.start} - ${timeInfo.end} (${timeInfo.duration}분)`);
+    }
+    if (assignedSubjects.length > 0) {
+        console.log('배정된 과목:', assignedSubjects.join(', '));
+    } else {
+        console.log('배정된 과목이 없습니다.');
+    }
+    
+    // TODO: 나중에 모달이나 툴팁으로 정보 표시 기능 추가 가능
+}
+
+// ================== 학생 부담 분석 시스템 ==================
+
+// 학생 부담 설정값 저장 (기본값 없음, 실제 설정된 값만 사용)
+let studentBurdenConfig = {};
+
+// 공통 함수: 날짜별 학생 부담 계산
+function calculateDayStudentBurden(dayLabel, currentScheduleData = null, additionalSubject = null, additionalSlotId = null) {
+    const result = {
+        studentExamCounts: {},
+        studentHardExamCounts: {},
+        examCountDistribution: {},
+        hardExamCountDistribution: {}
+    };
+    
+    // 스케줄 데이터 결정 (현재 스케줄 또는 전역 스케줄)
+    const targetSchedule = currentScheduleData || scheduleData;
+    
+    // 해당 날짜의 모든 슬롯 찾기
+    const daySlots = [];
+    Object.keys(targetSchedule).forEach(slotId => {
+        if (slotId.includes(dayLabel)) {
+            daySlots.push(slotId);
+        }
+    });
+    
+    // 추가 슬롯이 있다면 포함 (체크 목적)
+    if (additionalSlotId && additionalSlotId.includes(dayLabel)) {
+        if (!daySlots.includes(additionalSlotId)) {
+            daySlots.push(additionalSlotId);
+        }
+    }
+    
+    // 모든 학생 목록 수집
+    const allStudents = new Set();
+    if (constraintData.subjectStats) {
+        Object.values(constraintData.subjectStats).forEach(subjectStat => {
+            if (subjectStat.students) {
+                subjectStat.students.forEach(student => allStudents.add(student));
+            }
+        });
+    }
+    
+    // 학생별 카운트 초기화
+    allStudents.forEach(student => {
+        result.studentExamCounts[student] = 0;
+        result.studentHardExamCounts[student] = 0;
+    });
+    
+    // 학생별 실제 응시 과목 수집 (중복 제거용)
+    const studentSubjects = {};
+    allStudents.forEach(student => {
+        studentSubjects[student] = new Set();
+    });
+    
+    // 각 슬롯의 과목들을 확인하여 학생별 과목 수집
+    daySlots.forEach(slotId => {
+        let subjects = targetSchedule[slotId] || [];
+        
+        // 추가 과목이 있다면 포함 (체크 목적)
+        if (additionalSubject && slotId === additionalSlotId) {
+            subjects = [...subjects, additionalSubject];
+        }
+        
+        subjects.forEach(subjectName => {
+            const subjectStudents = constraintData.subjectStats[subjectName]?.students || [];
+            const isHardSubject = constraintData.hardSubjects && constraintData.hardSubjects[subjectName];
+            
+            subjectStudents.forEach(student => {
+                if (allStudents.has(student)) {
+                    studentSubjects[student].add(subjectName);
+                }
+            });
+        });
+    });
+    
+    // 학생별 실제 시험 수 계산 (중복 제거된 과목으로)
+    allStudents.forEach(student => {
+        const uniqueSubjects = Array.from(studentSubjects[student]);
+        result.studentExamCounts[student] = uniqueSubjects.length;
+        
+        // 어려운 과목 수 계산
+        result.studentHardExamCounts[student] = uniqueSubjects.filter(subject => 
+            constraintData.hardSubjects && constraintData.hardSubjects[subject]
+        ).length;
+    });
+    
+    // 과목 수별 학생 수 집계 (일반 과목)
+    Object.values(result.studentExamCounts).forEach(count => {
+        if (count > 0) { // 0개는 표시하지 않음
+            result.examCountDistribution[count] = (result.examCountDistribution[count] || 0) + 1;
+        }
+    });
+    
+    // 과목 수별 학생 수 집계 (어려운 과목)
+    Object.values(result.studentHardExamCounts).forEach(count => {
+        if (count > 0) { // 0개는 표시하지 않음
+            result.hardExamCountDistribution[count] = (result.hardExamCountDistribution[count] || 0) + 1;
+        }
+    });
+    
+    return result;
+}
+
+// 학생 부담 분석 계산
+function calculateStudentBurden() {
+    const result = {
+        general: {},  // 일반 과목 부담 분석
+        hard: {}      // 어려운 과목 부담 분석
+    };
+    
+    console.log('학생 부담 분석 시작...');
+    
+    // 날짜별 분석
+    const examDates = getValidExamDates();
+    
+    examDates.forEach(([dayLabel, date]) => {
+        console.log(`${dayLabel} 분석 시작...`);
+        
+        // 공통 함수를 사용하여 날짜별 부담 계산
+        const dayBurden = calculateDayStudentBurden(dayLabel);
+        
+        result.general[dayLabel] = dayBurden.examCountDistribution;
+        result.hard[dayLabel] = dayBurden.hardExamCountDistribution;
+        
+        console.log(`${dayLabel} 일반 과목 분포:`, dayBurden.examCountDistribution);
+        console.log(`${dayLabel} 어려운 과목 분포:`, dayBurden.hardExamCountDistribution);
+    });
+    
+    return result;
+}
+
+// 유효한 시험 날짜 목록 반환
+function getValidExamDates() {
+    const examDates = examInfo.시험날짜 || {};
+    return Object.entries(examDates)
+        .filter(([day, date]) => date && date !== 'nan' && date.trim() !== '')
+        .sort((a, b) => {
+            const numA = parseInt(a[0].match(/\d+/)?.[0] || '0');
+            const numB = parseInt(b[0].match(/\d+/)?.[0] || '0');
+            return numA - numB;
+        });
+}
+
+// 학생 부담 분석 결과를 테이블로 렌더링
+function renderStudentBurdenAnalysis() {
+    console.log('학생 부담 분석 렌더링 시작...');
+    
+    // 설정값 표시 업데이트
+    const maxExamsElement = document.getElementById('maxExamsPerDay');
+    const maxHardExamsElement = document.getElementById('maxHardExamsPerDay');
+    
+    if (window.studentBurdenConfig && window.studentBurdenConfig.max_exams_per_day !== undefined) {
+        maxExamsElement.textContent = window.studentBurdenConfig.max_exams_per_day;
+    } else {
+        maxExamsElement.textContent = '설정 없음';
+    }
+    
+    if (window.studentBurdenConfig && window.studentBurdenConfig.max_hard_exams_per_day !== undefined) {
+        maxHardExamsElement.textContent = window.studentBurdenConfig.max_hard_exams_per_day;
+    } else {
+        maxHardExamsElement.textContent = '설정 없음';
+    }
+    
+    const burdenData = calculateStudentBurden();
+    const examDates = getValidExamDates();
+    
+    // 일반 과목 테이블 렌더링
+    const generalMaxAllowed = window.studentBurdenConfig ? window.studentBurdenConfig.max_exams_per_day : undefined;
+    renderBurdenTable('general', burdenData.general, examDates, generalMaxAllowed);
+    
+    // 어려운 과목 테이블 렌더링  
+    const hardMaxAllowed = window.studentBurdenConfig ? window.studentBurdenConfig.max_hard_exams_per_day : undefined;
+    renderBurdenTable('hard', burdenData.hard, examDates, hardMaxAllowed);
+}
+
+// 부담 분석 테이블 렌더링
+function renderBurdenTable(type, data, examDates, maxAllowed) {
+    console.log(`renderBurdenTable 호출: type=${type}, maxAllowed=${maxAllowed}`);
+    console.log('data:', data);
+    console.log('examDates:', examDates);
+    
+    const tableId = type === 'general' ? 'generalBurdenTable' : 'hardBurdenTable';
+    const table = document.getElementById(tableId);
+    console.log(`테이블 요소 찾기: ${tableId}`, table);
+    
+    if (!table) {
+        console.error(`테이블을 찾을 수 없습니다: ${tableId}`);
+        return;
+    }
+    
+    const thead = table.querySelector('thead tr');
+    const tbody = table.querySelector('tbody');
+    console.log('thead:', thead, 'tbody:', tbody);
+    
+    // 헤더 생성
+    thead.innerHTML = '<th class="burden-header">과목 수</th>';
+    examDates.forEach(([dayLabel, date]) => {
+        const dateObj = new Date(date);
+        const formattedDate = dateObj.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+        thead.innerHTML += `
+            <th class="text-center">
+                <div class="fw-bold">${dayLabel}</div>
+                <small class="text-muted">${formattedDate}</small>
+            </th>
+        `;
+    });
+    
+    // 모든 과목 수 수집 (많은 순으로 정렬)
+    const allExamCounts = new Set();
+    Object.values(data).forEach(dayData => {
+        Object.keys(dayData).forEach(count => allExamCounts.add(parseInt(count)));
+    });
+    const sortedExamCounts = Array.from(allExamCounts).sort((a, b) => b - a);
+    console.log('sortedExamCounts:', sortedExamCounts);
+    
+    // 바디 생성
+    tbody.innerHTML = '';
+    console.log('테이블 바디 초기화 완료');
+    
+    // 데이터가 없는 경우 안내 메시지 표시
+    if (sortedExamCounts.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `<td colspan="${examDates.length + 1}" class="text-center text-muted py-3">과목을 배치하면 분석 결과가 표시됩니다</td>`;
+        tbody.appendChild(emptyRow);
+        console.log(`${type} 테이블에 빈 상태 메시지 추가`);
+        return;
+    }
+    
+    sortedExamCounts.forEach(examCount => {
+        console.log(`행 생성 중: ${examCount}개`);
+        const row = document.createElement('tr');
+        row.innerHTML = `<td class="burden-header">${examCount}개</td>`;
+        
+        examDates.forEach(([dayLabel, date]) => {
+            const studentCount = data[dayLabel][examCount] || 0;
+            
+            if (studentCount > 0) {
+                // maxAllowed가 설정되어 있을 때만 색상 코딩 적용
+                let cellClass = '';
+                if (maxAllowed !== undefined && maxAllowed !== null) {
+                    cellClass = getBurdenCellClass(examCount, maxAllowed);
+                }
+                
+                row.innerHTML += `
+                    <td class="burden-cell ${cellClass}" 
+                        onclick="showBurdenDetail('${type}', '${dayLabel}', ${examCount})"
+                        title="클릭하여 상세 정보 보기">
+                        ${studentCount}명
+                    </td>
+                `;
+            } else {
+                row.innerHTML += '<td class="text-muted">-</td>';
+            }
+        });
+        
+        console.log(`행 추가: ${examCount}개`, row.innerHTML);
+        tbody.appendChild(row);
+    });
+    
+    console.log(`${type} 테이블 렌더링 완료`);
+    console.log(`${type} 테이블 현재 상태:`, table.style.display, table.offsetHeight, table.offsetWidth);
+}
+
+// 부담 수준에 따른 CSS 클래스 반환
+function getBurdenCellClass(examCount, maxAllowed) {
+    if (examCount <= maxAllowed - 2) {
+        return 'normal';
+    } else if (examCount === maxAllowed - 1) {
+        return 'warning';
+    } else {
+        return 'danger';
+    }
+}
+
+// 상세 정보 모달 표시
+function showBurdenDetail(type, dayLabel, examCount) {
+    console.log(`상세 정보 표시: ${type}, ${dayLabel}, ${examCount}개`);
+    
+    const modalTitle = document.getElementById('burdenDetailTitle');
+    const modalContent = document.getElementById('burdenDetailContent');
+    
+    // 제목 설정
+    const typeLabel = type === 'general' ? '일반 과목' : '어려운 과목';
+    modalTitle.innerHTML = `
+        <i class="fas fa-users me-2"></i>
+        ${dayLabel} - ${examCount}개 ${typeLabel} 수강 학생
+    `;
+    
+    // 상세 정보 생성
+    const detailData = getBurdenDetailData(type, dayLabel, examCount);
+    
+    if (detailData.length === 0) {
+        modalContent.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <p>해당 조건에 맞는 학생이 없습니다.</p>
+            </div>
+        `;
+    } else {
+        let html = `
+            <div class="mb-3">
+                <h6 class="text-secondary">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    과목 조합별 학생 분포
+                </h6>
+                <p class="text-muted small">총 ${detailData.reduce((sum, item) => sum + item.students.length, 0)}명이 하루에 ${examCount}개 ${typeLabel}을 수강합니다.</p>
+            </div>
+        `;
+        
+        detailData.forEach((item, index) => {
+            const subjectList = item.subjects.join(' + ');
+            const studentList = item.students.slice(0, 20).join(', ');
+            const remainingCount = item.students.length - 20;
+            
+            html += `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-books me-2"></i>
+                            ${subjectList}
+                            <span class="badge bg-primary ms-2">${item.students.length}명</span>
+                        </h6>
+                        <div class="card-text">
+                            <small class="text-muted">수강 학생:</small><br>
+                            <span class="text-dark">${studentList}</span>
+                            ${remainingCount > 0 ? `<span class="text-muted"> 외 ${remainingCount}명</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        modalContent.innerHTML = html;
+    }
+    
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('burdenDetailModal'));
+    modal.show();
+}
+
+// 상세 정보 데이터 생성
+function getBurdenDetailData(type, dayLabel, examCount) {
+    const result = [];
+    
+    // 해당 날짜의 모든 슬롯 수집
+    const daySlots = [];
+    Object.keys(scheduleData).forEach(slotId => {
+        if (slotId.includes(dayLabel)) {
+            daySlots.push(slotId);
+        }
+    });
+    
+    // 모든 학생 목록 수집
+    const allStudents = new Set();
+    if (constraintData.subjectStats) {
+        Object.values(constraintData.subjectStats).forEach(subjectStat => {
+            if (subjectStat.students) {
+                subjectStat.students.forEach(student => allStudents.add(student));
+            }
+        });
+    }
+    
+    // 각 학생별로 해당 날짜의 시험 과목 목록 계산
+    const studentSubjects = {};
+    allStudents.forEach(student => {
+        studentSubjects[student] = [];
+    });
+    
+    daySlots.forEach(slotId => {
+        const subjects = scheduleData[slotId] || [];
+        
+        subjects.forEach(subjectName => {
+            const subjectStudents = constraintData.subjectStats[subjectName]?.students || [];
+            const isHardSubject = constraintData.hardSubjects && constraintData.hardSubjects[subjectName];
+            
+            subjectStudents.forEach(student => {
+                if (allStudents.has(student)) {
+                    // 일반 과목 또는 어려운 과목 필터링
+                    if (type === 'general' || (type === 'hard' && isHardSubject)) {
+                        studentSubjects[student].push(subjectName);
+                    }
+                }
+            });
+        });
+    });
+    
+    // 정확히 examCount개 과목을 수강하는 학생들 필터링
+    const targetStudents = [];
+    Object.entries(studentSubjects).forEach(([student, subjects]) => {
+        if (subjects.length === examCount) {
+            targetStudents.push({ student, subjects: subjects.sort() });
+        }
+    });
+    
+    // 과목 조합별로 그룹화
+    const subjectCombinations = {};
+    targetStudents.forEach(({ student, subjects }) => {
+        const key = subjects.join('|');
+        if (!subjectCombinations[key]) {
+            subjectCombinations[key] = {
+                subjects: subjects,
+                students: []
+            };
+        }
+        subjectCombinations[key].students.push(student);
+    });
+    
+    // 결과 배열로 변환 (학생 수가 많은 순으로 정렬)
+    Object.values(subjectCombinations).forEach(combination => {
+        result.push({
+            subjects: combination.subjects,
+            students: combination.students.sort()
+        });
+    });
+    
+    result.sort((a, b) => b.students.length - a.students.length);
+    
+    return result;
+}
+
+// 패널 접기/펼치기 기능
+function initializeBurdenPanelToggle() {
+    const toggleButton = document.getElementById('toggleBurdenPanel');
+    const panelBody = document.getElementById('burdenPanelBody');
+    const panelIcon = document.getElementById('burdenPanelIcon');
+    
+    if (toggleButton && panelBody && panelIcon) {
+        toggleButton.addEventListener('click', function() {
+            if (panelBody.classList.contains('collapsed')) {
+                // 펼치기
+                panelBody.classList.remove('collapsed');
+                panelIcon.className = 'fas fa-chevron-up';
+                
+                // 펼칠 때 데이터 업데이트
+                renderStudentBurdenAnalysis();
+            } else {
+                // 접기
+                panelBody.classList.add('collapsed');
+                panelIcon.className = 'fas fa-chevron-down';
+            }
+        });
+    }
+}
+
+// ================== 과목 추천 시스템 ==================
+
+// 추천 알고리즘 설정값들 (조정 가능)
+const RECOMMENDATION_CONFIG = {
+    weights: {
+        constraint: 0.4,    // 제약밀도 가중치 (40%)
+        domain: 0.3,        // 도메인크기 가중치 (30%)
+        difficulty: 0.2,    // 어려운과목 가중치 (20%)
+        duration: 0.1       // 시험시간 가중치 (10%)
+    },
+    scores: {
+        conflictMultiplier: 10,     // 충돌 1개당 점수
+        hardSubjectBonus: 25,       // 어려운 과목 보너스 점수
+        maxDomainScore: 50,         // 도메인 점수 최대값
+        impossiblePenalty: 100,     // 배치 불가능 시 페널티
+        period2OnlyBonus: 15        // 2교시 전용 과목 보너스
+    },
+    thresholds: {
+        conflictRatio: 0.2,         // 전체 과목의 몇 %이상 충돌 시 표시
+        minConflictCount: 3,        // 최소 충돌 표시 개수
+        lowSlotThreshold: 3         // 슬롯이 적다고 표시할 기준
+    }
+};
+
+// 시험 시간 기준값들 (동적으로 계산됨)
+let timeThresholds = {
+    short: 50,      // 짧은 시험 기준 (기본값)
+    medium: 80,     // 중간 시간 기준 (기본값)
+    long: 100,      // 긴 시험 기준 (기본값)
+    maxDuration: 100, // 정규화 기준 (기본값)
+    periods: {},    // 교시별 시간 제한 (동적으로 채워짐)
+    shortestPeriod: 50  // 가장 짧은 교시의 시간 (동적으로 계산됨)
+};
+
+// custom_exam_info.json에서 교시별 시간 제한 로드
+async function loadPeriodLimitsFromExamInfo() {
+    try {
+        console.log('custom_exam_info.json에서 교시 정보 로드 중...');
+        
+        const response = await fetch('/uploads/custom_exam_info.json');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const examInfo = await response.json();
+        
+        if (!examInfo.date_periods) {
+            console.log('date_periods 정보가 없음');
+            return;
+        }
+        
+        const allDurations = [];
+        const periodLimits = {};
+        
+        // 모든 날짜와 교시의 duration 수집
+        for (const dayKey in examInfo.date_periods) {
+            const dayPeriods = examInfo.date_periods[dayKey];
+            for (const periodKey in dayPeriods) {
+                const periodInfo = dayPeriods[periodKey];
+                if (periodInfo.duration) {
+                    const duration = parseInt(periodInfo.duration);
+                    if (!isNaN(duration) && duration > 0) {
+                        allDurations.push(duration);
+                        
+                        // 교시별 제한 시간 수집
+                        if (!periodLimits[periodKey]) {
+                            periodLimits[periodKey] = [];
+                        }
+                        periodLimits[periodKey].push(duration);
+                    }
+                }
+            }
+        }
+        
+        if (allDurations.length === 0) {
+            console.log('유효한 교시 시간 정보가 없음');
+            return;
+        }
+        
+        // 교시별 시간 제한 설정 (각 교시의 최소값 사용)
+        timeThresholds.periods = {};
+        for (const period in periodLimits) {
+            timeThresholds.periods[period] = Math.min(...periodLimits[period]);
+        }
+        
+        // 가장 짧은 교시 시간 찾기
+        const allPeriodLimits = Object.values(timeThresholds.periods);
+        if (allPeriodLimits.length > 0) {
+            timeThresholds.shortestPeriod = Math.min(...allPeriodLimits);
+        }
+        
+        console.log('로드된 교시별 시간 제한:', timeThresholds.periods);
+        console.log(`가장 짧은 교시: ${timeThresholds.shortestPeriod}분`);
+        
+        // 전체 교시 시간 통계
+        console.log('교시 시간 통계:', {
+            '전체 범위': `${Math.min(...allDurations)}-${Math.max(...allDurations)}분`,
+            '교시 개수': Object.keys(timeThresholds.periods).length + '개',
+            '평균 시간': Math.round(allDurations.reduce((a, b) => a + b, 0) / allDurations.length) + '분'
+        });
+        
+    } catch (error) {
+        console.error('교시 정보 로드 실패:', error);
+        console.log('기본값 사용');
+    }
+}
+
+// 시험 시간 기준값들을 동적으로 계산
+async function calculateTimeThresholds() {
+    console.log('시험 시간 기준값 계산 시작...');
+    
+    // 과목별 시험 시간 수집
+    const durations = [];
+    for (const subject in subjectInfo) {
+        const duration = subjectInfo[subject]?.시간;
+        if (duration && duration > 0) {
+            durations.push(duration);
+        }
+    }
+    
+    if (durations.length === 0) {
+        console.log('시험 시간 정보가 없어 기본값 사용');
+        return;
+    }
+    
+    // 통계 계산
+    durations.sort((a, b) => a - b);
+    const min = durations[0];
+    const max = durations[durations.length - 1];
+    const median = durations[Math.floor(durations.length / 2)];
+    const q1 = durations[Math.floor(durations.length * 0.25)];
+    const q3 = durations[Math.floor(durations.length * 0.75)];
+    
+    // 기준값 업데이트 (사분위수 기반)
+    timeThresholds.short = q1;           // 하위 25% 기준
+    timeThresholds.medium = median;      // 중간값 기준  
+    timeThresholds.long = q3;           // 상위 25% 기준
+    timeThresholds.maxDuration = max;   // 정규화용 최대값
+    
+    // custom_exam_info.json에서 교시별 시간 제한 로드
+    await loadPeriodLimitsFromExamInfo();
+    
+    console.log('계산된 시험 시간 기준값:', {
+        '짧은 시험 (Q1)': timeThresholds.short + '분',
+        '중간 시험 (Median)': timeThresholds.medium + '분', 
+        '긴 시험 (Q3)': timeThresholds.long + '분',
+        '최대 시간': timeThresholds.maxDuration + '분',
+        '2교시 최대': timeThresholds.period2Max + '분',
+        '전체 범위': `${min}-${max}분 (${durations.length}개 과목)`
+    });
+}
+
+// 과목 추천 알고리즘 (빠르고 간단한 휴리스틱)
+function calculateSubjectRecommendations() {
+    const unassignedSubjects = getUnassignedSubjects();
+    const recommendations = [];
+    
+    console.log('추천 계산 시작. 미배치 과목:', unassignedSubjects.length);
+    console.log('constraintData 상태:', constraintData);
+    console.log('constraintData keys:', constraintData ? Object.keys(constraintData) : 'null');
+    
+    // 제약조건 데이터가 로드되지 않았으면 기본 추천 제공
+    if (!constraintData || Object.keys(constraintData).length === 0) {
+        console.log('제약조건 데이터가 없음. 기본 추천 사용');
+        return getBasicRecommendations(unassignedSubjects);
+    }
+    
+    for (const subjectName of unassignedSubjects) {
+        let score = 0;
+        let reasons = [];
+        
+        // 1. 제약 밀도 - 충돌이 많은 과목 우선
+        const conflicts = getSubjectConflicts(subjectName);
+        console.log(`[메인추천] ${subjectName} 총 충돌 계산:`, conflicts);
+        console.log(`[메인추천] constraintData.individualConflicts 길이:`, constraintData.individualConflicts?.length || 0);
+        console.log(`[메인추천] constraintData.teacherConflicts 길이:`, constraintData.teacherConflicts?.length || 0);
+        
+        const conflictScore = conflicts.length * RECOMMENDATION_CONFIG.scores.conflictMultiplier;
+        score += conflictScore * RECOMMENDATION_CONFIG.weights.constraint;
+        
+        // 동적 임계값: 전체 과목의 일정 비율 이상 충돌 시 표시
+        const totalSubjects = Object.keys(subjectInfo).length;
+        const conflictThreshold = Math.max(
+            RECOMMENDATION_CONFIG.thresholds.minConflictCount, 
+            Math.floor(totalSubjects * RECOMMENDATION_CONFIG.thresholds.conflictRatio)
+        );
+        if (conflicts.length >= conflictThreshold) {
+            reasons.push(`${conflicts.length}개 과목과 충돌`);
+        }
+        
+        // 2. 도메인 크기 - 배치 가능한 슬롯이 적은 과목 우선
+        const availableSlots = getAvailableSlots(subjectName);
+        const totalSlots = getAllSlots().length;
+        const domainScore = availableSlots.length > 0 ? 
+            (totalSlots - availableSlots.length) * (RECOMMENDATION_CONFIG.scores.maxDomainScore / totalSlots) : 
+            RECOMMENDATION_CONFIG.scores.impossiblePenalty;
+        score += domainScore * RECOMMENDATION_CONFIG.weights.domain;
+        if (availableSlots.length <= RECOMMENDATION_CONFIG.thresholds.lowSlotThreshold) {
+            reasons.push(`배치 가능한 슬롯 ${availableSlots.length}개`);
+        }
+        
+        // 3. 어려운 과목 보너스
+        const isHard = constraintData.hardSubjects && constraintData.hardSubjects[subjectName];
+        if (isHard) {
+            score += RECOMMENDATION_CONFIG.scores.hardSubjectBonus * RECOMMENDATION_CONFIG.weights.difficulty;
+            reasons.push('어려운 과목');
+        }
+        
+        // 4. 시험 시간 - 긴 시험 우선
+        const duration = subjectInfo[subjectName]?.시간 || timeThresholds.short;
+        const timeScore = (duration / timeThresholds.maxDuration) * 10; // 동적 정규화
+        score += timeScore * RECOMMENDATION_CONFIG.weights.duration;
+        if (duration > timeThresholds.long) {
+            reasons.push('긴 시험 시간');
+        }
+        
+        // 5. 보너스: 가장 짧은 교시에만 들어갈 수 있는 과목
+        if (duration <= timeThresholds.shortestPeriod) {
+            // 가장 짧은 교시에만 배치 가능한지 확인
+            const shortPeriodSlots = availableSlots.filter(slot => {
+                // 가장 짧은 시간 제한을 가진 교시 슬롯인지 확인
+                return Object.keys(timeThresholds.periods).some(period => {
+                    return slot.includes(`${period}교시`) && timeThresholds.periods[period] === timeThresholds.shortestPeriod;
+                });
+            });
+            
+            if (shortPeriodSlots.length > 0 && availableSlots.length === shortPeriodSlots.length) {
+                score += RECOMMENDATION_CONFIG.scores.period2OnlyBonus;
+                reasons.push('짧은 교시 전용');
+            }
+        }
+        
+        recommendations.push({
+            subject: subjectName,
+            score: score,
+            reasons: reasons,
+            availableSlots: availableSlots.length,
+            conflicts: conflicts.length
+        });
+    }
+    
+    // 점수 순으로 정렬
+    recommendations.sort((a, b) => b.score - a.score);
+    
+    console.log('추천 결과 (상위 5개):', recommendations.slice(0, 5));
+    
+    return recommendations;
+}
+
+// 제약조건 데이터가 없을 때 기본 추천 (시험 시간과 가능 슬롯만 고려)
+function getBasicRecommendations(unassignedSubjects) {
+    const recommendations = [];
+    
+    for (const subjectName of unassignedSubjects) {
+        let score = 0;
+        let reasons = [];
+        
+        // 1. 시험 시간 기준 (긴 시험 우선)
+        const duration = subjectInfo[subjectName]?.시간 || timeThresholds.short;
+        score += duration * 0.5; // 시간에 비례한 점수
+        
+        if (duration > timeThresholds.long) {
+            reasons.push('긴 시험 시간');
+        } else if (duration <= timeThresholds.shortestPeriod) {
+            reasons.push('짧은 교시 가능');
+        }
+        
+        // 2. 배치 가능한 슬롯 수 (적을수록 우선)
+        const availableSlots = getAvailableSlots(subjectName);
+        const totalSlots = getAllSlots().length; // 실제 전체 슬롯 수 동적 계산
+        const domainScore = availableSlots.length > 0 ? 
+            (totalSlots - availableSlots.length) * (30 / totalSlots) : 50;
+        score += domainScore;
+        
+        if (availableSlots.length <= 3) {
+            reasons.push(`가능 슬롯 ${availableSlots.length}개`);
+        }
+        
+        // 기본 이유가 없으면 추가
+        if (reasons.length === 0) {
+            reasons.push('배치 권장');
+        }
+        
+        // 3. 충돌 정보 계산 (가능한 경우)
+        const conflicts = getSubjectConflicts(subjectName);
+        let conflictScore = 0;
+        
+        console.log(`[기본추천] ${subjectName} 충돌 계산:`, conflicts);
+        
+        if (conflicts.length > 0) {
+            conflictScore = conflicts.length * 5; // 충돌당 5점
+            score += conflictScore;
+            
+            if (conflicts.length >= 3) {
+                reasons.push(`${conflicts.length}개 과목과 충돌`);
+            }
+        }
+        
+        recommendations.push({
+            subject: subjectName,
+            score: score,
+            reasons: reasons,
+            availableSlots: availableSlots.length,
+            conflicts: conflicts.length // 실제 충돌 수 반영
+        });
+    }
+    
+    // 점수 순으로 정렬
+    recommendations.sort((a, b) => b.score - a.score);
+    
+    console.log('기본 추천 결과 (상위 5개):', recommendations.slice(0, 5));
+    
+    return recommendations;
+}
+
+// 과목의 충돌 리스트 반환
+function getSubjectConflicts(subjectName) {
+    const conflicts = new Set();
+    
+    console.log(`[getSubjectConflicts] ${subjectName} 시작`);
+    
+    // 제약조건 데이터가 없으면 빈 배열 반환
+    if (!constraintData) {
+        console.log(`[getSubjectConflicts] constraintData가 null/undefined`);
+        return [];
+    }
+    
+    // 학생 충돌 (객체의 키에서 해당 과목이 포함된 항목 찾기)
+    let studentConflictSubjects = [];
+    if (constraintData.subjectConflicts) {
+        Object.keys(constraintData.subjectConflicts).forEach(conflictKey => {
+            const conflict = constraintData.subjectConflicts[conflictKey];
+            if (conflict.subject1 === subjectName) {
+                studentConflictSubjects.push(conflict.subject2);
+            } else if (conflict.subject2 === subjectName) {
+                studentConflictSubjects.push(conflict.subject1);
+            }
+        });
+    }
+    console.log(`[getSubjectConflicts] ${subjectName} 사용자 설정 충돌:`, studentConflictSubjects);
+    studentConflictSubjects.forEach(conflict => conflicts.add(conflict));
+    
+    // 개별 학생 충돌 (individual_conflicts.json 또는 same_grade_conflicts.json)
+    let individualConflictSubjects = [];
+    
+    // individual_conflicts.json이 있고 비어있지 않으면 사용
+    if (constraintData.individualConflicts && Array.isArray(constraintData.individualConflicts) && constraintData.individualConflicts.length > 0) {
+        constraintData.individualConflicts.forEach(conflict => {
+            if (conflict.subject1 === subjectName) {
+                individualConflictSubjects.push(conflict.subject2);
+            } else if (conflict.subject2 === subjectName) {
+                individualConflictSubjects.push(conflict.subject1);
+            }
+        });
+        console.log(`[getSubjectConflicts] ${subjectName} individual_conflicts 사용:`, individualConflictSubjects);
+    } 
+    // individual_conflicts가 없거나 비어있으면 same_grade_conflicts 사용
+    else if (constraintData.sameGradeConflicts && Array.isArray(constraintData.sameGradeConflicts)) {
+        constraintData.sameGradeConflicts.forEach(conflict => {
+            if (conflict.subject1 === subjectName) {
+                individualConflictSubjects.push(conflict.subject2);
+            } else if (conflict.subject2 === subjectName) {
+                individualConflictSubjects.push(conflict.subject1);
+            }
+        });
+        console.log(`[getSubjectConflicts] ${subjectName} same_grade_conflicts 사용:`, individualConflictSubjects);
+    }
+    
+    individualConflictSubjects.forEach(conflict => conflicts.add(conflict));
+    
+    // 교사 충돌 (배열에서 subject1, subject2로 저장된 항목 찾기)
+    let teacherConflictSubjects = [];
+    if (constraintData.teacherConflicts && Array.isArray(constraintData.teacherConflicts)) {
+        constraintData.teacherConflicts.forEach(conflict => {
+            if (conflict.subject1 === subjectName) {
+                teacherConflictSubjects.push(conflict.subject2);
+            } else if (conflict.subject2 === subjectName) {
+                teacherConflictSubjects.push(conflict.subject1);
+            }
+        });
+    }
+    console.log(`[getSubjectConflicts] ${subjectName} 교사 충돌:`, teacherConflictSubjects);
+    teacherConflictSubjects.forEach(conflict => conflicts.add(conflict));
+    
+    // 듣기 충돌 (교사 충돌과 같은 구조로 가정)
+    let listeningConflictSubjects = [];
+    if (constraintData.listeningConflicts && Array.isArray(constraintData.listeningConflicts)) {
+        constraintData.listeningConflicts.forEach(conflict => {
+            if (conflict.subject1 === subjectName) {
+                listeningConflictSubjects.push(conflict.subject2);
+            } else if (conflict.subject2 === subjectName) {
+                listeningConflictSubjects.push(conflict.subject1);
+            }
+        });
+    }
+    console.log(`[getSubjectConflicts] ${subjectName} 듣기 충돌:`, listeningConflictSubjects);
+    listeningConflictSubjects.forEach(conflict => conflicts.add(conflict));
+    
+    const result = Array.from(conflicts);
+    console.log(`[getSubjectConflicts] ${subjectName} 최종 충돌:`, result);
+    
+    return result;
+}
+
+// 과목이 배치 가능한 슬롯 반환
+function getAvailableSlots(subjectName) {
+    const allSlots = getAllSlots();
+    const availableSlots = [];
+    
+    for (const slotId of allSlots) {
+        const canPlace = canPlaceSubjectInSlot(subjectName, slotId);
+        if (canPlace.canPlace) {
+            availableSlots.push(slotId);
+        }
+    }
+    
+    return availableSlots;
+}
+
+// 모든 슬롯 ID 반환
+function getAllSlots() {
+    const slots = [];
+    const scheduleGrid = document.querySelector('.schedule-grid');
+    if (scheduleGrid) {
+        const cells = scheduleGrid.querySelectorAll('[data-slot]');
+        cells.forEach(cell => {
+            if (cell.dataset.slot) {
+                slots.push(cell.dataset.slot);
+            }
+        });
+    }
+    return slots;
+}
+
+// 미배치 과목 반환
+function getUnassignedSubjects() {
+    const allSubjects = Object.keys(subjectInfo);
+    const assignedSubjects = new Set();
+    
+    Object.values(scheduleData).forEach(subjectList => {
+        if (Array.isArray(subjectList)) {
+            subjectList.forEach(subject => assignedSubjects.add(subject));
+        }
+    });
+    
+    return allSubjects.filter(subject => !assignedSubjects.has(subject));
+}
+
+// 상단 배너 추천 업데이트
+function updateRecommendationBanner() {
+    const container = document.getElementById('bannerRecommendations');
+    
+    // 과목 정보가 없으면 로딩 표시
+    if (!subjectInfo || Object.keys(subjectInfo).length === 0) {
+        container.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>과목 정보 로딩 중...';
+        return;
+    }
+    
+    // 시간 기준값이 기본값이면 다시 계산
+    if (timeThresholds.maxDuration === 100 && Object.keys(subjectInfo).length > 0) {
+        calculateTimeThresholds().catch(error => {
+            console.error('시간 기준값 계산 실패:', error);
+        });
+    }
+    
+    const recommendations = calculateSubjectRecommendations();
+    
+    if (recommendations.length === 0) {
+        container.innerHTML = '<i class="fas fa-check-circle me-2"></i>모든 과목이 배치되었습니다!';
+        return;
+    }
+    
+    // 상위 3개만 표시
+    const topRecommendations = recommendations.slice(0, 3);
+    
+    let html = '';
+    topRecommendations.forEach((rec, index) => {
+        const priorityNum = index + 1;
+        const priorityText = priorityNum + '순위';
+        
+        html += `
+            <span class="banner-recommendation-item" 
+                  data-subject="${rec.subject}"
+                  title="${rec.reasons.join(', ')} (점수: ${rec.score.toFixed(1)})">
+                <span class="priority-badge priority-${priorityNum}">${priorityNum}</span>
+                ${rec.subject}
+            </span>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 추천 UI 업데이트 (기존 사이드바용 - 숨김)
+function updateRecommendationUI() {
+    const container = document.getElementById('recommendedSubjects');
+    
+    // 과목 정보가 없으면 로딩 표시
+    if (!subjectInfo || Object.keys(subjectInfo).length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-2">
+                <i class="fas fa-spinner fa-spin"></i>
+                <small>과목 정보 로딩 중...</small>
+            </div>
+        `;
+        return;
+    }
+    
+    // 시간 기준값이 기본값이면 다시 계산
+    if (timeThresholds.maxDuration === 100 && Object.keys(subjectInfo).length > 0) {
+        calculateTimeThresholds().catch(error => {
+            console.error('시간 기준값 계산 실패:', error);
+        });
+    }
+    
+    const recommendations = calculateSubjectRecommendations();
+    
+    if (recommendations.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-success py-2">
+                <i class="fas fa-check-circle"></i>
+                <small>모든 과목이 배치되었습니다!</small>
+            </div>
+        `;
+        return;
+    }
+    
+    // 상위 3개만 표시
+    const topRecommendations = recommendations.slice(0, 3);
+    
+    let html = '';
+    
+    // 제약조건 데이터 상태 표시
+    const hasConstraintData = constraintData && Object.keys(constraintData).length > 0;
+    if (!hasConstraintData) {
+        html += `
+            <div class="alert alert-warning py-1 px-2 mb-2" style="font-size: 11px;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <small>제약조건 데이터 없음 (기본 추천)</small>
+            </div>
+        `;
+    }
+    
+    topRecommendations.forEach((rec, index) => {
+        const priority = index === 0 ? 'high' : index === 1 ? 'medium' : 'low';
+        const priorityText = index === 0 ? '1순위' : index === 1 ? '2순위' : '3순위';
+        
+        html += `
+            <div class="recommended-item" 
+                 data-subject="${rec.subject}"
+                 title="${rec.reasons.join(', ')}"
+                 onclick="highlightRecommendedSubject('${rec.subject}')">
+                <div>
+                    <div class="subject-name">${rec.subject}</div>
+                    <small class="text-muted">${rec.reasons.slice(0, 2).join(', ')}</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="priority-badge priority-${priority}">${priorityText}</span>
+                    <i class="fas fa-info-circle reason-icon" 
+                       title="점수: ${rec.score.toFixed(1)}, 가능 슬롯: ${rec.availableSlots}개${hasConstraintData ? ', 충돌: ' + rec.conflicts + '개' : ''}"></i>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 추천 상세 정보 모달 표시
+function showRecommendationDetails() {
+    const recommendations = calculateSubjectRecommendations();
+    
+    if (recommendations.length === 0) {
+        showAlert('표시할 추천이 없습니다.', 'info');
+        return;
+    }
+    
+    let modalContent = `
+        <div class="modal fade" id="recommendationModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            스마트 추천 상세 정보
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="mb-3">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    추천 순위 및 이유
+                                </h6>
+    `;
+    
+    recommendations.slice(0, 5).forEach((rec, index) => {
+        const priorityNum = index + 1;
+        const priorityColor = priorityNum === 1 ? 'danger' : priorityNum === 2 ? 'warning' : 'success';
+        
+        modalContent += `
+            <div class="card mb-3 border-${priorityColor}">
+                <div class="card-header bg-${priorityColor} bg-opacity-10">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <span class="badge bg-${priorityColor} me-2">${priorityNum}순위</span>
+                            ${rec.subject}
+                        </h6>
+                        <span class="text-muted">점수: ${rec.score.toFixed(1)}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>추천 이유:</strong>
+                            <ul class="mt-2">
+                                ${rec.reasons.map(reason => `<li>${reason}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>통계 정보:</strong>
+                            <ul class="mt-2">
+                                <li>충돌 과목: ${rec.conflicts}개</li>
+                                <li>배치 가능 슬롯: ${rec.availableSlots}개</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-${priorityColor} btn-sm mt-2 modal-subject-find-btn" 
+                            data-subject="${rec.subject}">
+                        <i class="fas fa-search me-1"></i>과목 찾기
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    modalContent += `
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 기존 모달 제거
+    const existingModal = document.getElementById('recommendationModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 새 모달 추가 및 표시
+    document.body.insertAdjacentHTML('beforeend', modalContent);
+    const modal = new bootstrap.Modal(document.getElementById('recommendationModal'));
+    modal.show();
+    
+    // 모달 내 "과목 찾기" 버튼 이벤트 추가
+    document.querySelectorAll('.modal-subject-find-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const subjectName = this.getAttribute('data-subject');
+            if (subjectName) {
+                highlightRecommendedSubject(subjectName);
+                modal.hide();
+                console.log('모달에서 과목 찾기:', subjectName);
+            }
+        });
+    });
+}
+
+// 추천 과목 하이라이트
+function highlightRecommendedSubject(subjectName) {
+    console.log('highlightRecommendedSubject 호출됨:', subjectName);
+    
+    // 기존 하이라이트 제거
+    document.querySelectorAll('.subject-item').forEach(item => {
+        item.classList.remove('border-warning', 'bg-warning-subtle');
+    });
+    
+    // 해당 과목 하이라이트 (여러 가능한 선택자 시도)
+    let subjectItem = null;
+    
+    // 1차 시도: 과목 목록에서 정확한 data-subject 속성으로 찾기
+    try {
+        subjectItem = document.querySelector(`.subject-item[data-subject="${subjectName}"]`);
+        console.log('1차 시도 (subject-item + data-subject):', subjectItem);
+    } catch (e) {
+        console.log('1차 시도 실패 (CSS 선택자 오류):', e);
+    }
+    
+    // 2차 시도: 모든 과목 아이템을 순회하며 data-subject 비교
+    if (!subjectItem) {
+        const allItems = document.querySelectorAll('.subject-item');
+        for (let item of allItems) {
+            const dataSubject = item.getAttribute('data-subject');
+            if (dataSubject === subjectName) {
+                subjectItem = item;
+                console.log('2차 시도 성공 (data-subject 비교):', subjectItem);
+                break;
+            }
+        }
+    }
+    
+    // 3차 시도: 텍스트 내용으로 찾기
+    if (!subjectItem) {
+        const allItems = document.querySelectorAll('.subject-item');
+        for (let item of allItems) {
+            const nameElement = item.querySelector('.subject-name');
+            if (nameElement && nameElement.textContent.trim() === subjectName.trim()) {
+                subjectItem = item;
+                console.log('3차 시도 성공 (텍스트 비교):', subjectItem);
+                break;
+            }
+        }
+    }
+    
+    // 4차 시도: 부분 일치로 찾기 (공백, 특수문자 문제 대응)
+    if (!subjectItem) {
+        const allItems = document.querySelectorAll('.subject-item');
+        for (let item of allItems) {
+            const dataSubject = item.getAttribute('data-subject');
+            const nameElement = item.querySelector('.subject-name');
+            const nameText = nameElement?.textContent?.trim();
+            
+            // 공백 제거 후 비교
+            if ((dataSubject && dataSubject.replace(/\s+/g, '') === subjectName.replace(/\s+/g, '')) ||
+                (nameText && nameText.replace(/\s+/g, '') === subjectName.replace(/\s+/g, ''))) {
+                subjectItem = item;
+                console.log('4차 시도 성공 (공백 제거 비교):', subjectItem);
+                break;
+            }
+        }
+    }
+    
+    if (subjectItem) {
+        // 배치된 과목이라도 하이라이트 표시
+        subjectItem.classList.add('border-warning', 'bg-warning-subtle');
+        subjectItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // 배치된 과목인지 확인
+        const isAssigned = subjectItem.classList.contains('opacity-50');
+        const message = isAssigned ? 
+            `${subjectName} 과목을 찾았습니다! (이미 배치됨)` : 
+            `${subjectName} 과목을 찾았습니다!`;
+        
+        showAlert(message, 'info');
+        
+        // 3초 후 하이라이트 제거
+        setTimeout(() => {
+            subjectItem.classList.remove('border-warning', 'bg-warning-subtle');
+        }, 3000);
+    } else {
+        console.log('과목을 찾을 수 없음:', subjectName);
+        console.log('사용 가능한 과목들:', Array.from(document.querySelectorAll('.subject-item')).map(item => {
+            return {
+                dataSubject: item.getAttribute('data-subject'),
+                nameText: item.querySelector('.subject-name')?.textContent?.trim(),
+                isAssigned: item.classList.contains('opacity-50')
+            };
+        }));
+        showAlert(`${subjectName} 과목을 찾을 수 없습니다.`, 'warning');
+    }
+}
+
+// 통계 업데이트
+function updateStatistics() {
+    const totalSubjects = Object.keys(subjectInfo).length;
+    const assignedSubjects = Object.values(scheduleData).flat().length;
+    const usedSlots = Object.keys(scheduleData).length;
+    
+    // 동적으로 총 슬롯 수 계산 (무제한 날짜, 동적 교시 지원)
+    const examDates = examInfo.시험날짜 || {};
+    const validDatesCount = Object.entries(examDates)
+        .filter(([day, date]) => date && date !== 'nan' && date.trim() !== '')
+        .length;
+    
+    // 사용 가능한 교시 수를 동적으로 계산
+    const availablePeriods = new Set();
+    const datePeriods = examInfo.date_periods || {};
+    Object.values(datePeriods).forEach(dayPeriods => {
+        Object.keys(dayPeriods).forEach(periodNum => {
+            const periodData = dayPeriods[periodNum];
+            if (!periodData._deleted) {
+                availablePeriods.add(parseInt(periodNum));
+            }
+        });
+    });
+    const periodsCount = availablePeriods.size; // 완전 동적 처리
+    
+    const totalSlots = validDatesCount * periodsCount; // 완전 동적 처리 (하드코딩 제거)
+    
+    const progressPercentage = totalSubjects > 0 ? (assignedSubjects / totalSubjects * 100) : 0;
+    
+    // 상단 바 업데이트는 더 이상 하지 않음 (UI에서 제거됨)
+    
+    // 충돌 표시 제거됨
+    
+    // 좌측 사이드바 업데이트
+    document.getElementById('sidebarAssignedCount').textContent = assignedSubjects;
+    document.getElementById('sidebarTotalCount').textContent = totalSubjects;
+}
+
+// 통합 자동생성 드롭다운 이벤트
+document.addEventListener('click', function(e) {
+    if (e.target.matches('.dropdown-item[data-time]')) {
+        e.preventDefault();
+        
+        const timeValue = e.target.getAttribute('data-time');
+        const timeText = e.target.getAttribute('data-text');
+        
+        // 배지 텍스트 업데이트
+        document.getElementById('timeBadge').textContent = timeText;
+        
+        // 사용자 설정 입력 표시/숨김
+        const customInput = document.getElementById('customTimeInput');
+        if (timeValue === 'custom') {
+            customInput.style.display = 'block';
+        } else {
+            customInput.style.display = 'none';
+            // 선택된 옵션이 아닌 경우 자동생성 실행
+            if (timeValue !== 'custom') {
+                executeAutoGenerate(timeValue);
+            }
+        }
+        
+        // 드롭다운 닫기
+        const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('autoGenerateDropdown'));
+        if (dropdown) {
+            dropdown.hide();
+        }
+    }
+});
+
+// 자동생성 실행 함수
+function executeAutoGenerate(timeValue) {
+    const message = '수동 배치된 과목을 유지하고 나머지 과목만 자동 배치하시겠습니까?';
+    
+    if (confirm(message)) {
+        const timeLimit = parseInt(timeValue);
+        autoGenerateSchedule(true, timeLimit); // 항상 수동 배치 유지
+    }
+}
+
+// 사용자 설정 입력 이벤트
+document.addEventListener('DOMContentLoaded', function() {
+    const customTimeInput = document.getElementById('customTimeValue');
+    if (customTimeInput) {
+        customTimeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const customValue = parseInt(this.value);
+                if (customValue >= 5 && customValue <= 300) {
+                    executeAutoGenerate(customValue.toString());
+                } else {
+                    alert('시간은 5초에서 300초 사이로 설정해주세요.');
+                }
+            }
+        });
+    }
+});
+
+// 검증 버튼 이벤트
+document.getElementById('validateBtn').addEventListener('click', function() {
+    const validationResult = validateCompleteSchedule();
+    displayDetailedValidationResult(validationResult);
+});
+
+
+// 시간 제한에 따른 텍스트 가져오기
+function getTimeLimitText(timeLimit) {
+    if (timeLimit <= 10) return '빠름';
+    if (timeLimit <= 60) return '균형';
+    if (timeLimit <= 120) return '고품질';
+    return '사용자 설정';
+}
+
+// 자동 생성 실행
+async function autoGenerateSchedule(keepManualAssignments = true, timeLimit = 120) {
+    try {
+        const timeText = getTimeLimitText(timeLimit);
+        showLoading('자동 생성', `${timeText} 모드로 최적의 시험 시간표를 생성하고 있습니다...`, true);
+        
+        // 설정
+        const config = {
+            solve_time_limit: timeLimit,
+            keep_manual_assignments: keepManualAssignments
+        };
+        
+        // 실시간 진행 상황 폴링 시작
+        let statusInterval = setInterval(async () => {
+            try {
+                const statusResponse = await fetch('/api/schedule-status');
+                const statusData = await statusResponse.json();
+                
+                // 진행 상황 업데이트
+                updateProgress(statusData.progress || 0, statusData.step || '처리 중...');
+            } catch (error) {
+                console.error('Status polling error:', error);
+            }
+        }, 1000); // 1초마다 상태 확인
+        
+        // 서버에 요청 전송
+        const response = await fetch('/api/schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config: config, time_limit: config.solve_time_limit })
+        });
+        
+        const result = await response.json();
+        
+        // 폴링 중지
+        clearInterval(statusInterval);
+        
+        if (result.success) {
+            // 서버 응답에서 직접 결과 처리
+            await handleScheduleSuccess(result.slot_assignments);
+        } else {
+            hideLoading();
+            showAlert('시간표 생성에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'danger');
+        }
+    } catch (error) {
+        console.error('자동 생성 오류:', error);
+        hideLoading();
+        showAlert('네트워크 오류가 발생했습니다.', 'danger');
+    }
+}
+
+// 스케줄 생성 성공 처리
+async function handleScheduleSuccess(slotAssignments) {
+    try {
+        updateProgress(90, '결과를 처리하는 중...');
+        
+        // 서버 응답에서 받은 데이터를 scheduleData에 저장
+        scheduleData = slotAssignments;
+        
+        updateProgress(95, '결과를 저장하는 중...');
+        
+        // 자동 생성 결과를 manual_schedule.json에 저장
+        await saveManualSchedule('automatic');
+        
+        updateProgress(98, 'UI 업데이트 중...');
+        
+        // UI 업데이트
+        renderScheduleGrid();
+        renderSubjectList();
+        updateStatistics();
+        updateRecommendationBanner(); // 배너 추천 업데이트
+        
+        // 학생 부담 분석 업데이트 (설정 여부와 관계없이 실행)
+        if (!document.getElementById('burdenPanelBody').classList.contains('collapsed')) {
+            renderStudentBurdenAnalysis();
+        }
+        
+        updateProgress(100, '완료!');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        hideLoading();
+        showAlert('시험 시간표가 성공적으로 생성되고 저장되었습니다!', 'success');
+    } catch (error) {
+        console.error('스케줄 성공 처리 오류:', error);
+        hideLoading();
+        showAlert('결과 처리 중 오류가 발생했습니다.', 'danger');
+    }
+}
+
+// 저장 버튼 제거됨 (자동 저장 기능으로 대체)
+
+// 전체 초기화 버튼 이벤트
+document.getElementById('clearAllBtn').addEventListener('click', function() {
+    if (confirm('모든 배치된 과목을 초기화하시겠습니까?')) {
+        scheduleData = {};
+        
+        // 자동 저장 (빈 스케줄로)
+        saveManualSchedule();
+        
+        renderScheduleGrid();
+        renderSubjectList();
+        updateStatistics();
+        updateRecommendationBanner(); // 배너 추천도 초기화
+        
+        // 학생 부담 분석 업데이트 (설정 여부와 관계없이 실행)
+        if (!document.getElementById('burdenPanelBody').classList.contains('collapsed')) {
+            renderStudentBurdenAnalysis();
+        }
+        showAlert('시간표가 초기화되었습니다.', 'info');
+    }
+});
+
+// 상단 배너 버튼 이벤트들
+document.getElementById('bannerDetailsBtn').addEventListener('click', function() {
+    showRecommendationDetails();
+});
+
+// 자동생성 드롭다운 위치 조정
+document.getElementById('autoGenerateDropdown').addEventListener('show.bs.dropdown', function() {
+    const button = this;
+    const dropdown = button.nextElementSibling;
+    const buttonRect = button.getBoundingClientRect();
+    
+    // 드롭다운을 버튼 아래쪽에 고정 위치로 설정
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = (buttonRect.bottom + 5) + 'px';
+    dropdown.style.right = (window.innerWidth - buttonRect.right) + 'px';
+    dropdown.style.left = 'auto';
+    dropdown.style.zIndex = '9999999';
+});
+
+// 배너 과목 클릭 이벤트 (이벤트 위임)
+document.getElementById('bannerRecommendations').addEventListener('click', function(e) {
+    console.log('배너 클릭 이벤트 발생:', e.target);
+    
+    const recommendationItem = e.target.closest('.banner-recommendation-item');
+    console.log('찾은 추천 아이템:', recommendationItem);
+    
+    if (recommendationItem) {
+        const subjectName = recommendationItem.getAttribute('data-subject');
+        console.log('클릭한 과목명:', subjectName);
+        
+        if (subjectName) {
+            // 현재 DOM에 있는 모든 과목 아이템 확인
+            const allSubjectItems = document.querySelectorAll('.subject-item');
+            console.log('DOM에 있는 과목 아이템 수:', allSubjectItems.length);
+            console.log('DOM에 있는 과목들:', Array.from(allSubjectItems).map(item => ({
+                dataSubject: item.getAttribute('data-subject'),
+                subjectName: item.querySelector('.subject-name')?.textContent?.trim()
+            })));
+            
+            highlightRecommendedSubject(subjectName);
+        }
+    }
+});
+
+// 유틸리티 함수들
+function showLoading(title, message, showProgress = false) {
+    document.getElementById('loadingTitle').textContent = title;
+    document.getElementById('loadingMessage').textContent = message;
+    
+    // 진행률 바와 단계 표시 여부 설정
+    const progressContainer = document.getElementById('progressContainer');
+    const stepContainer = document.getElementById('stepContainer');
+    
+    if (showProgress) {
+        progressContainer.style.display = 'block';
+        stepContainer.style.display = 'block';
+        updateProgress(0, '준비 중...');
+    } else {
+        progressContainer.style.display = 'none';
+        stepContainer.style.display = 'none';
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    modal.show();
+}
+
+function updateProgress(percentage, stepMessage) {
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const currentStep = document.getElementById('currentStep');
+    
+    if (progressBar) {
+        progressBar.style.width = percentage + '%';
+        progressBar.setAttribute('aria-valuenow', percentage);
+    }
+    
+    if (progressText) {
+        progressText.textContent = Math.round(percentage) + '%';
+    }
+    
+    if (currentStep && stepMessage) {
+        currentStep.textContent = stepMessage;
+    }
+}
+
+function hideLoading() {
+    try {
+        console.log('hideLoading 호출됨');
+        const modalElement = document.getElementById('loadingModal');
+        if (!modalElement) {
+            console.error('loadingModal 요소를 찾을 수 없습니다');
+            return;
+        }
+        
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            console.log('기존 모달 인스턴스 숨기기');
+            modal.hide();
+        } else {
+            console.log('모달 인스턴스가 없어서 직접 숨기기');
+            modalElement.style.display = 'none';
+            // 백드롭 제거
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+            // body 클래스 제거
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        }
+    } catch (error) {
+        console.error('hideLoading 오류:', error);
+        // 강제로 모달 숨기기
+        const modalElement = document.getElementById('loadingModal');
+        if (modalElement) {
+            modalElement.style.display = 'none';
+        }
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
+}
+
+function showAlert(message, type) {
+    // 기존 showAlert 함수 사용 또는 간단한 알림 구현
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 3000);
+}
+
+// 상세 정보를 포함한 알림 함수
+function showDetailedAlert(title, message, details, type, modalSize = 'modal-lg') {
+    // 모달 생성
+    const modalId = 'detailedAlertModal';
+    let existingModal = document.getElementById(modalId);
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const modalHtml = `
+        <div class="modal fade" id="${modalId}" tabindex="-1" role="dialog">
+            <div class="modal-dialog ${modalSize}" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-${type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i>
+                            ${title}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <strong>${message}</strong>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">상세 정보:</h6>
+                            </div>
+                            <div class="card-body">
+                                <div style="font-family: inherit; margin: 0;">${details}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">확인</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById(modalId));
+    modal.show();
+    
+    // 모달이 닫힌 후 DOM에서 제거
+    document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// ================== 수동 배치 저장/로드 기능 ==================
+
+// 수동 배치 시간표 저장
+async function saveManualSchedule(createdBy = 'manual') {
+    try {
+        const response = await fetch('/api/manual-schedule', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                slot_assignments: scheduleData,
+                created_by: createdBy
+            })
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            console.error('배치 저장 실패:', result.error);
+        } else {
+            console.log('배치 저장 완료:', createdBy);
+        }
+    } catch (error) {
+        console.error('배치 저장 오류:', error);
+    }
+}
+
+// 수동 배치 시간표 로드
+async function loadManualSchedule() {
+    try {
+        const response = await fetch('/api/manual-schedule');
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.slot_assignments) {
+            scheduleData = result.data.slot_assignments;
+            
+            // UI 업데이트
+            renderScheduleGrid();
+            renderSubjectList();
+            updateStatistics();
+            
+            // 학생 부담 분석 업데이트
+            if (!document.getElementById('burdenPanelBody').classList.contains('collapsed')) {
+                renderStudentBurdenAnalysis();
+            }
+            
+            console.log('수동 배치 로드 완료:', result.data.metadata);
+            return true;
+        } else {
+            console.log('저장된 수동 배치 데이터가 없습니다.');
+            return false;
+        }
+    } catch (error) {
+        console.error('수동 배치 로드 오류:', error);
+        return false;
+    }
+}
+
+// 수동 배치 시간표 삭제
+async function clearManualSchedule() {
+    if (!confirm('저장된 수동 배치 데이터를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/manual-schedule', {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            scheduleData = {};
+            renderScheduleGrid();
+            renderSubjectList();
+            updateStatistics();
+            showAlert('저장된 수동 배치 데이터가 삭제되었습니다.', 'success');
+        } else {
+            showAlert('삭제 중 오류가 발생했습니다.', 'danger');
+        }
+    } catch (error) {
+        console.error('수동 배치 삭제 오류:', error);
+        showAlert('삭제 중 오류가 발생했습니다.', 'danger');
+    }
+}
+
+</script>
+{% endblock %}

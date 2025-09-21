@@ -1,0 +1,878 @@
+{% extends "base.html" %}
+
+{% block title %}듣기평가 충돌 정보 편집{% endblock %}
+
+{% block extra_css %}
+<style>
+    .warning-section {
+        display: none;
+    }
+    
+    .main-content {
+        display: none;
+    }
+    
+    /* 폼 섹션 스타일 */
+    .form-section {
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .conflicts-list {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    /* 검색 가능한 드롭다운 스타일 */
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+    
+    .select-input {
+        width: 100%;
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        background-color: #fff;
+        cursor: pointer;
+    }
+    
+    .select-input:focus {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .dropdown-arrow {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #6c757d;
+    }
+    
+    .dropdown-menu-custom {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    
+    .dropdown-item-custom {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .dropdown-item-custom:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .dropdown-item-custom:last-child {
+        border-bottom: none;
+    }
+    
+    .no-results {
+        padding: 0.5rem 0.75rem;
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+    }
+    
+    .dropdown-item-custom.highlighted {
+        background-color: #0d6efd !important;
+        color: white !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- 경고 메시지 섹션 -->
+    <div id="warningSection" class="warning-section">
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <h4 id="warningTitle">경고</h4>
+                    <p id="warningMessage" class="mb-3">필요한 파일이 없습니다.</p>
+                    <a id="warningAction" href="#" class="btn btn-warning">
+                        <i class="fas fa-arrow-right me-2"></i>해당 설정 페이지로 이동
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 콘텐츠 -->
+    <div id="mainContent" class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3><i class="fas fa-headphones me-2"></i>듣기평가 충돌 편집</h3>
+            <div>
+                <button class="btn btn-danger me-2" onclick="resetListeningConflicts()">
+                    <i class="fas fa-undo me-2"></i>원본으로 초기화
+                </button>
+                <button class="btn btn-primary me-2" onclick="generateConflicts()" id="generateBtn">
+                    <i class="fas fa-magic me-2"></i>자동생성
+                </button>
+                <a href="{{ url_for('data_review') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>돌아가기
+                </a>
+            </div>
+        </div>
+        
+        <!-- 듣기평가 충돌 추가 폼 -->
+        <div class="form-section">
+            <h5 class="mb-3">
+                <i class="fas fa-plus-circle text-primary me-2"></i>
+                새로운 듣기평가 충돌 추가
+            </h5>
+
+            <div class="row">
+                <div class="col-md-5 mb-3">
+                    <label for="subject1SearchableSelect" class="form-label">첫 번째 과목</label>
+                    <div class="searchable-select" id="subject1SearchableSelect">
+                        <input type="text" class="select-input" id="subject1SearchInput" 
+                               placeholder="과목을 선택하세요" onclick="openSubject1Dropdown()" 
+                               onfocus="openSubject1Dropdown()">
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                        <div class="dropdown-menu-custom" id="subject1DropdownMenu">
+                            <div id="subject1DropdownList"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-5 mb-3">
+                    <label for="subject2SearchableSelect" class="form-label">두 번째 과목</label>
+                    <div class="searchable-select" id="subject2SearchableSelect">
+                        <input type="text" class="select-input" id="subject2SearchInput" 
+                               placeholder="과목을 선택하세요" onclick="openSubject2Dropdown()" 
+                               onfocus="openSubject2Dropdown()">
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                        <div class="dropdown-menu-custom" id="subject2DropdownMenu">
+                            <div id="subject2DropdownList"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="button" class="btn btn-primary w-100" onclick="addConflict()">
+                        <i class="fas fa-plus me-2"></i>
+                        충돌 추가
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 기존 충돌 목록 -->
+        <div class="form-section">
+            <h5 class="mb-3">
+                <i class="fas fa-list text-info me-2"></i>
+                설정된 듣기평가 충돌 목록
+                <span class="badge bg-secondary ms-2" id="conflictCount">0개</span>
+            </h5>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="subjectFilter" class="form-label">과목 검색:</label>
+                    <input type="text" id="subjectFilter" class="form-control" placeholder="과목명을 입력하세요">
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button class="btn btn-danger" onclick="removeSelectedConflicts()" id="removeBtn" disabled>
+                        <i class="fas fa-trash me-2"></i>선택된 충돌 삭제
+                    </button>
+                </div>
+            </div>
+            
+            <div class="conflicts-list">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered" id="listeningTable">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="selectAll" class="form-check-input">
+                                </th>
+                                <th>과목 1</th>
+                                <th>과목 2</th>
+                                <th>충돌 유형</th>
+                                <th>설명</th>
+                                <th>삭제</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listeningTableBody">
+                            <!-- 데이터가 여기에 로드됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="noConflictsMessage" class="text-center text-muted py-4" style="display: none;">
+                <i class="fas fa-info-circle fa-2x mb-2"></i>
+                <p>설정된 듣기평가 충돌이 없습니다.</p>
+                <p class="small">위의 "자동생성" 버튼을 클릭하여 과목 정보를 바탕으로 듣기평가 충돌을 자동으로 생성하거나,<br>
+                위의 폼에서 수동으로 충돌을 추가해보세요.</p>
+            </div>
+        </div>
+    </div>
+    
+
+    </div> <!-- 메인 콘텐츠 끝 -->
+</div>
+
+<script>
+let conflictData = [];
+let subjects = [];
+let selectedSubject1 = '';
+let selectedSubject2 = '';
+let currentHighlightedIndex1 = -1;
+let currentHighlightedIndex2 = -1;
+
+// 데이터 로드
+async function loadData() {
+    try {
+        const response = await fetch('/api/listening-conflicts');
+        const data = await response.json();
+        
+        if (data.success) {
+            conflictData = data.conflicts;
+            subjects = data.subjects;
+            
+            // 충돌 수 업데이트
+            document.getElementById('conflictCount').textContent = data.conflicts.length + '개';
+            
+            renderTable();
+            updateFilters();
+            showMainContent();
+            
+            // 폼 초기화 (처음 로드 시에만)
+            if (!window.formInitialized) {
+                initializeForm();
+                window.formInitialized = true;
+            }
+        } else {
+            if (data.error === 'no_exam_scope') {
+                showWarning('과목 정보 파일이 없습니다', 
+                    '과목 정보를 먼저 설정해주세요.', 
+                    '/exam-scope');
+            } else {
+                showWarning('오류 발생', 
+                    data.error || '데이터 로드 중 오류가 발생했습니다.', 
+                    '/data-review');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading data:', error);
+        showWarning('오류 발생', 
+            '데이터 로드 중 오류가 발생했습니다.', 
+            '/data-review');
+    }
+}
+
+// 경고 메시지 표시
+function showWarning(title, message, actionUrl) {
+    document.getElementById('warningTitle').textContent = title;
+    document.getElementById('warningMessage').textContent = message;
+    document.getElementById('warningAction').href = actionUrl;
+    document.getElementById('warningSection').style.display = 'block';
+    document.getElementById('mainContent').style.display = 'none';
+}
+
+// 메인 콘텐츠 표시
+function showMainContent() {
+    document.getElementById('warningSection').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+}
+
+// 자동생성 함수
+async function generateConflicts() {
+    try {
+        // 자동생성 버튼 비활성화
+        const generateBtn = document.getElementById('generateBtn');
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>생성 중...';
+        
+        const response = await fetch('/api/generate-listening-conflicts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            conflictData = data.conflicts;
+            subjects = data.subjects;
+            
+            // 충돌 수 업데이트
+            document.getElementById('conflictCount').textContent = data.conflicts.length + '개';
+            
+            renderTable();
+            updateFilters();
+            
+            // 성공 메시지 표시
+            alert(`과목 정보를 바탕으로 ${data.conflicts.length}개의 듣기평가 충돌이 생성되었습니다.`);
+        } else {
+            alert('자동생성 실패: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error generating conflicts:', error);
+        alert('자동생성 중 오류가 발생했습니다.');
+    } finally {
+        // 자동생성 버튼 복원
+        const generateBtn = document.getElementById('generateBtn');
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>자동생성';
+    }
+}
+
+// 테이블 렌더링
+function renderTable() {
+    const tbody = document.getElementById('listeningTableBody');
+    const noConflictsMessage = document.getElementById('noConflictsMessage');
+    
+    tbody.innerHTML = '';
+    
+    if (conflictData.length === 0) {
+        noConflictsMessage.style.display = 'block';
+        return;
+    } else {
+        noConflictsMessage.style.display = 'none';
+    }
+    
+    conflictData.forEach((conflict, index) => {
+        const row = document.createElement('tr');
+        
+        // 체크박스
+        const checkboxCell = document.createElement('td');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'form-check-input conflict-checkbox';
+        checkbox.onchange = updateRemoveButton;
+        checkboxCell.appendChild(checkbox);
+        row.appendChild(checkboxCell);
+        
+        // 과목 1
+        const subject1Cell = document.createElement('td');
+        subject1Cell.textContent = conflict.subject1;
+        subject1Cell.style.fontWeight = 'bold';
+        row.appendChild(subject1Cell);
+        
+        // 과목 2
+        const subject2Cell = document.createElement('td');
+        subject2Cell.textContent = conflict.subject2;
+        subject2Cell.style.fontWeight = 'bold';
+        row.appendChild(subject2Cell);
+        
+        // 충돌 유형
+        const typeCell = document.createElement('td');
+        typeCell.textContent = conflict.type;
+        typeCell.className = 'text-center';
+        typeCell.style.color = '#dc3545';
+        row.appendChild(typeCell);
+        
+        // 설명
+        const descCell = document.createElement('td');
+        descCell.textContent = conflict.description;
+        descCell.style.fontSize = '0.8rem';
+        row.appendChild(descCell);
+        
+        // 삭제 버튼
+        const actionCell = document.createElement('td');
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn btn-sm btn-outline-danger';
+        removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        removeBtn.onclick = () => removeConflict(index);
+        actionCell.appendChild(removeBtn);
+        row.appendChild(actionCell);
+        
+        tbody.appendChild(row);
+    });
+    
+    updateRemoveButton();
+}
+
+// 필터 업데이트
+function updateFilters() {
+    const subjectFilter = document.getElementById('subjectFilter');
+    subjectFilter.addEventListener('input', filterTable);
+}
+
+// 테이블 필터링
+function filterTable() {
+    const subjectFilter = document.getElementById('subjectFilter').value.toLowerCase();
+    
+    const rows = document.querySelectorAll('#listeningTableBody tr');
+    
+    rows.forEach(row => {
+        const subject1 = row.cells[1].textContent.toLowerCase();
+        const subject2 = row.cells[2].textContent.toLowerCase();
+        
+        const subjectMatch = subject1.includes(subjectFilter) || subject2.includes(subjectFilter);
+        row.style.display = subjectMatch ? '' : 'none';
+    });
+}
+
+// 선택된 충돌 제거 버튼 업데이트
+function updateRemoveButton() {
+    const checkboxes = document.querySelectorAll('.conflict-checkbox:checked');
+    const removeBtn = document.getElementById('removeBtn');
+    removeBtn.disabled = checkboxes.length === 0;
+}
+
+// 개별 충돌 제거
+function removeConflict(index) {
+    if (confirm('이 듣기평가 충돌을 제거하시겠습니까?')) {
+        const conflict = conflictData[index];
+        removeConflicts([conflict]);
+    }
+}
+
+// 선택된 충돌들 제거
+async function removeSelectedConflicts() {
+    const checkboxes = document.querySelectorAll('.conflict-checkbox:checked');
+    const selectedConflicts = [];
+    
+    checkboxes.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        const rowIndex = Array.from(row.parentNode.children).indexOf(row);
+        selectedConflicts.push(conflictData[rowIndex]);
+    });
+    
+    if (selectedConflicts.length === 0) {
+        alert('제거할 충돌을 선택해주세요.');
+        return;
+    }
+    
+    if (confirm(`${selectedConflicts.length}개의 듣기평가 충돌을 제거하시겠습니까?`)) {
+        await removeConflicts(selectedConflicts);
+    }
+}
+
+// 충돌 제거 실행
+async function removeConflicts(conflictsToRemove) {
+    try {
+        const response = await fetch('/api/update-listening-conflicts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                conflicts_to_remove: conflictsToRemove
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(data.message);
+            loadData(); // 테이블 새로고침
+        } else {
+            alert('제거 실패: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error removing conflicts:', error);
+        alert('제거 중 오류가 발생했습니다.');
+    }
+}
+
+
+
+// 전체 선택/해제
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.conflict-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+    updateRemoveButton();
+});
+
+// 폼 초기화
+function initializeForm() {
+    initSubject1Dropdown();
+    initSubject2Dropdown();
+    
+    // 외부 클릭 시 드롭다운 닫기
+    document.addEventListener('click', function(e) {
+        const subject1Select = document.getElementById('subject1SearchableSelect');
+        const subject2Select = document.getElementById('subject2SearchableSelect');
+        
+        if (subject1Select && !subject1Select.contains(e.target)) {
+            closeSubject1Dropdown();
+        }
+        if (subject2Select && !subject2Select.contains(e.target)) {
+            closeSubject2Dropdown();
+        }
+    });
+}
+
+// 첫 번째 과목 드롭다운 초기화
+function initSubject1Dropdown() {
+    const dropdownList = document.getElementById('subject1DropdownList');
+    dropdownList.innerHTML = '';
+    
+    subjects.forEach(subject => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item-custom';
+        item.textContent = subject;
+        item.addEventListener('click', () => selectSubject1(subject));
+        dropdownList.appendChild(item);
+    });
+}
+
+// 두 번째 과목 드롭다운 초기화
+function initSubject2Dropdown() {
+    const dropdownList = document.getElementById('subject2DropdownList');
+    dropdownList.innerHTML = '';
+    
+    subjects.forEach(subject => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item-custom';
+        item.textContent = subject;
+        item.addEventListener('click', () => selectSubject2(subject));
+        dropdownList.appendChild(item);
+    });
+}
+
+// 첫 번째 과목 선택
+function selectSubject1(subject) {
+    selectedSubject1 = subject;
+    const searchInput = document.getElementById('subject1SearchInput');
+    searchInput.value = subject;
+    closeSubject1Dropdown();
+}
+
+// 두 번째 과목 선택
+function selectSubject2(subject) {
+    selectedSubject2 = subject;
+    const searchInput = document.getElementById('subject2SearchInput');
+    searchInput.value = subject;
+    closeSubject2Dropdown();
+}
+
+// 첫 번째 과목 드롭다운 열기
+function openSubject1Dropdown() {
+    const menu = document.getElementById('subject1DropdownMenu');
+    const searchInput = document.getElementById('subject1SearchInput');
+    
+    menu.style.display = 'block';
+    searchInput.focus();
+    currentHighlightedIndex1 = -1;
+    
+    // 검색 기능 활성화
+    searchInput.oninput = function() {
+        filterSubjects1(this.value);
+        currentHighlightedIndex1 = -1; // 검색 시 하이라이트 초기화
+        clearHighlight1();
+    };
+    
+    // 키보드 이벤트 리스너 추가
+    searchInput.onkeydown = function(e) {
+        handleKeyboardNavigation1(e);
+    };
+}
+
+// 두 번째 과목 드롭다운 열기
+function openSubject2Dropdown() {
+    const menu = document.getElementById('subject2DropdownMenu');
+    const searchInput = document.getElementById('subject2SearchInput');
+    
+    menu.style.display = 'block';
+    searchInput.focus();
+    currentHighlightedIndex2 = -1;
+    
+    // 검색 기능 활성화
+    searchInput.oninput = function() {
+        filterSubjects2(this.value);
+        currentHighlightedIndex2 = -1; // 검색 시 하이라이트 초기화
+        clearHighlight2();
+    };
+    
+    // 키보드 이벤트 리스너 추가
+    searchInput.onkeydown = function(e) {
+        handleKeyboardNavigation2(e);
+    };
+}
+
+// 첫 번째 과목 드롭다운 닫기
+function closeSubject1Dropdown() {
+    const menu = document.getElementById('subject1DropdownMenu');
+    const searchInput = document.getElementById('subject1SearchInput');
+    
+    menu.style.display = 'none';
+    searchInput.oninput = null;
+    searchInput.onkeydown = null;
+    currentHighlightedIndex1 = -1;
+}
+
+// 두 번째 과목 드롭다운 닫기
+function closeSubject2Dropdown() {
+    const menu = document.getElementById('subject2DropdownMenu');
+    const searchInput = document.getElementById('subject2SearchInput');
+    
+    menu.style.display = 'none';
+    searchInput.oninput = null;
+    searchInput.onkeydown = null;
+    currentHighlightedIndex2 = -1;
+}
+
+// 첫 번째 과목 필터링
+function filterSubjects1(searchTerm) {
+    const dropdownList = document.getElementById('subject1DropdownList');
+    const filteredSubjects = subjects.filter(subject => 
+        subject.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    dropdownList.innerHTML = '';
+    
+    if (filteredSubjects.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.className = 'no-results';
+        noResults.textContent = '검색 결과가 없습니다';
+        dropdownList.appendChild(noResults);
+    } else {
+        filteredSubjects.forEach(subject => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item-custom';
+            item.textContent = subject;
+            item.addEventListener('click', () => selectSubject1(subject));
+            dropdownList.appendChild(item);
+        });
+    }
+}
+
+// 두 번째 과목 필터링
+function filterSubjects2(searchTerm) {
+    const dropdownList = document.getElementById('subject2DropdownList');
+    const filteredSubjects = subjects.filter(subject => 
+        subject.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    dropdownList.innerHTML = '';
+    
+    if (filteredSubjects.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.className = 'no-results';
+        noResults.textContent = '검색 결과가 없습니다';
+        dropdownList.appendChild(noResults);
+    } else {
+        filteredSubjects.forEach(subject => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item-custom';
+            item.textContent = subject;
+            item.addEventListener('click', () => selectSubject2(subject));
+            dropdownList.appendChild(item);
+        });
+    }
+}
+
+// 첫 번째 과목 키보드 네비게이션 처리
+function handleKeyboardNavigation1(e) {
+    const items = document.querySelectorAll('#subject1DropdownList .dropdown-item-custom:not(.no-results)');
+    
+    if (items.length === 0) return;
+    
+    switch(e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            currentHighlightedIndex1 = Math.min(currentHighlightedIndex1 + 1, items.length - 1);
+            updateHighlight1(items);
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            currentHighlightedIndex1 = Math.max(currentHighlightedIndex1 - 1, 0);
+            updateHighlight1(items);
+            break;
+        case 'Enter':
+            e.preventDefault();
+            if (currentHighlightedIndex1 >= 0 && currentHighlightedIndex1 < items.length) {
+                const selectedText = items[currentHighlightedIndex1].textContent;
+                selectSubject1(selectedText);
+            }
+            break;
+        case 'Escape':
+            e.preventDefault();
+            closeSubject1Dropdown();
+            break;
+    }
+}
+
+// 두 번째 과목 키보드 네비게이션 처리
+function handleKeyboardNavigation2(e) {
+    const items = document.querySelectorAll('#subject2DropdownList .dropdown-item-custom:not(.no-results)');
+    
+    if (items.length === 0) return;
+    
+    switch(e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            currentHighlightedIndex2 = Math.min(currentHighlightedIndex2 + 1, items.length - 1);
+            updateHighlight2(items);
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            currentHighlightedIndex2 = Math.max(currentHighlightedIndex2 - 1, 0);
+            updateHighlight2(items);
+            break;
+        case 'Enter':
+            e.preventDefault();
+            if (currentHighlightedIndex2 >= 0 && currentHighlightedIndex2 < items.length) {
+                const selectedText = items[currentHighlightedIndex2].textContent;
+                selectSubject2(selectedText);
+            }
+            break;
+        case 'Escape':
+            e.preventDefault();
+            closeSubject2Dropdown();
+            break;
+    }
+}
+
+// 첫 번째 과목 하이라이트 업데이트
+function updateHighlight1(items) {
+    clearHighlight1();
+    if (currentHighlightedIndex1 >= 0 && currentHighlightedIndex1 < items.length) {
+        items[currentHighlightedIndex1].classList.add('highlighted');
+        items[currentHighlightedIndex1].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+// 두 번째 과목 하이라이트 업데이트
+function updateHighlight2(items) {
+    clearHighlight2();
+    if (currentHighlightedIndex2 >= 0 && currentHighlightedIndex2 < items.length) {
+        items[currentHighlightedIndex2].classList.add('highlighted');
+        items[currentHighlightedIndex2].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+// 첫 번째 과목 하이라이트 제거
+function clearHighlight1() {
+    const items = document.querySelectorAll('#subject1DropdownList .dropdown-item-custom');
+    items.forEach(item => item.classList.remove('highlighted'));
+}
+
+// 두 번째 과목 하이라이트 제거
+function clearHighlight2() {
+    const items = document.querySelectorAll('#subject2DropdownList .dropdown-item-custom');
+    items.forEach(item => item.classList.remove('highlighted'));
+}
+
+// 충돌 추가
+async function addConflict() {
+    const subject1 = selectedSubject1;
+    const subject2 = selectedSubject2;
+    
+    if (!subject1 || !subject2) {
+        alert('두 과목을 모두 선택해주세요.');
+        return;
+    }
+    
+    if (subject1 === subject2) {
+        alert('서로 다른 과목을 선택해주세요.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/add-listening-conflict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                subject1: subject1,
+                subject2: subject2
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(data.message);
+            // 폼 초기화
+            selectedSubject1 = '';
+            selectedSubject2 = '';
+            document.getElementById('subject1SearchInput').value = '';
+            document.getElementById('subject2SearchInput').value = '';
+            // 테이블 새로고침
+            loadData();
+        } else {
+            alert('추가 실패: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error adding conflict:', error);
+        alert('충돌 추가 중 오류가 발생했습니다.');
+    }
+}
+
+ // 페이지 로드 시 데이터 로드
+ document.addEventListener('DOMContentLoaded', loadData);
+
+// 듣기 충돌 초기화 함수
+async function resetListeningConflicts() {
+    if (confirm('듣기 충돌 편집을 원본 엑셀 파일로 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        try {
+            const response = await fetch('/api/reset-listening-conflicts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                alert('듣기 충돌이 원본 엑셀 파일로 초기화되었습니다.');
+                loadData(); // 테이블 새로고침
+            } else {
+                alert('듣기 충돌 초기화에 실패했습니다: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error resetting listening conflicts:', error);
+            alert('듣기 충돌 초기화 중 오류가 발생했습니다.');
+        }
+    }
+}
+</script>
+
+<style>
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+
+#listeningTable th {
+    font-size: 0.8rem;
+    white-space: nowrap;
+    color: #ffffff !important;
+    font-weight: bold !important;
+    text-align: center;
+    background-color: #343a40 !important;
+    border-color: #495057 !important;
+}
+
+#listeningTable td {
+    font-size: 0.8rem;
+    vertical-align: middle;
+    padding: 0.5rem 0.25rem;
+}
+
+.form-check-input {
+    margin: 0;
+}
+</style>
+{% endblock %} 

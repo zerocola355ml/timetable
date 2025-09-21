@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}과목 정보 편집{% endblock %}
+
+{% block extra_css %}
+<style>
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        .custom-subject {
+            background-color: #d4edda;
+        }
+        .original-subject {
+            background-color: #ffffff;
+        }
+
+        
+        /* 드래그 앤 드롭 영역 스타일 */
+        .upload-drop-zone {
+            border: 3px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .upload-drop-zone:hover {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        
+        .upload-drop-zone.dragover {
+            border-color: #28a745;
+            background-color: #d4edda;
+            transform: scale(1.02);
+        }
+        
+        .upload-drop-content {
+            pointer-events: none;
+        }
+        
+        .upload-drop-zone:hover .upload-drop-content {
+            pointer-events: auto;
+        }
+        
+        .upload-drop-zone.dragover .upload-drop-content {
+            pointer-events: auto;
+        }
+        
+        .upload-drop-zone .btn {
+            pointer-events: auto;
+        }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid mt-4">
+        <!-- 헤더 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3><i class="fas fa-book me-2"></i>과목 정보</h3>
+                    <div>
+                        <button class="btn btn-danger me-2" onclick="completeResetExamScope()">
+                            <i class="fas fa-undo me-2"></i>파일 제거
+                        </button>
+                        <a href="{{ url_for('data_review') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>돌아가기
+                        </a>
+                    </div>
+                </div>
+                <hr>
+            </div>
+        </div>
+
+        <!-- 파일 업로드 섹션 -->
+        <div class="row mb-4" id="uploadSection">
+            <div class="col-12">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-upload me-2"></i>과목 정보 파일 업로드
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 드래그 앤 드롭 영역 -->
+                        <div class="upload-drop-zone" id="uploadDropZone">
+                            <div class="upload-drop-content">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                <h5>파일을 여기에 드래그하거나 클릭하여 선택하세요</h5>
+                                <p class="text-muted">지원 형식: .xlsx, .xls (최대 10MB)</p>
+                                <button class="btn btn-outline-primary" onclick="document.getElementById('examScopeFile').click()">
+                                    <i class="fas fa-folder-open me-2"></i>파일 선택
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 숨겨진 파일 입력 -->
+                        <input type="file" id="examScopeFile" class="form-control d-none" accept=".xlsx,.xls" onchange="handleFileSelect(this)">
+                        
+                        <!-- 기존 업로드 컨트롤 (백업용) -->
+                        <div class="row mt-3">
+                            <div class="col-12 text-center">
+                                <button class="btn btn-outline-secondary" onclick="downloadExamScopeTemplate()">
+                                    <i class="fas fa-download me-2"></i>양식 다운로드
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <div id="uploadStatus" class="alert" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 데이터 테이블 -->
+        <div class="row" id="dataTable">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-table me-2"></i>과목별 정보
+                        </h5>
+                        <p class="mb-0">수정이 필요하면 파일 제거 후 새로 업로드 하세요.</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="examScopeTable">
+                                <thead>
+                                                         <tr>
+                         <th>과목명</th>
+                         <th>시간 (분)</th>
+                         <th>듣기평가</th>
+                         <th>자율감독</th>
+                         <th>학년</th>
+                         <th>담당교사</th>
+                     </tr>
+                                </thead>
+                                <tbody id="examScopeTableBody">
+                                    <!-- 데이터가 여기에 로드됩니다 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div class="modal fade" id="alertModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="alertModalTitle">알림</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="alertModalBody">
+                    <!-- 메시지가 여기에 표시됩니다 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let examScopeData = {};
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            // 초기 상태 설정: 업로드 섹션 표시, 테이블 숨김
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('dataTable').style.display = 'none';
+            
+            loadExamScopeData();
+        });
+
+        // 과목 정보 데이터 로드
+        async function loadExamScopeData() {
+            try {
+                console.log('DEBUG: Fetching exam scope data...');
+                const response = await fetch('/api/exam-scope-data');
+                console.log('DEBUG: Response status:', response.status);
+                
+                const data = await response.json();
+                console.log('DEBUG: Response data:', data);
+                
+                if (data.success) {
+                    console.log('DEBUG: Data loaded successfully');
+                    examScopeData = data.data;
+                    renderExamScopeTable();
+                    // 파일이 있으면 테이블 표시, 업로드 섹션 숨김
+                    document.getElementById('uploadSection').style.display = 'none';
+                    document.getElementById('dataTable').style.display = 'block';
+                } else {
+                    console.log('DEBUG: Data load failed, error:', data.error);
+                    if (data.error === 'no_file') {
+                        console.log('DEBUG: No file error detected, showing message');
+                        // 파일이 없을 때는 업로드 섹션만 표시, 테이블 숨김
+                        document.getElementById('uploadSection').style.display = 'block';
+                        document.getElementById('dataTable').style.display = 'none';
+                    } else {
+                        console.log('DEBUG: Other error detected');
+                        showAlert(`오류: ${data.error}`, 'danger');
+                    }
+                }
+            } catch (error) {
+                console.error('DEBUG: Error in loadExamScopeData:', error);
+                showAlert('데이터 로드 중 오류가 발생했습니다.', 'danger');
+                console.error('Error loading exam scope data:', error);
+            }
+        }
+
+        // 테이블 렌더링
+        function renderExamScopeTable() {
+            const tbody = document.getElementById('examScopeTableBody');
+            tbody.innerHTML = '';
+
+            for (const [subject, info] of Object.entries(examScopeData)) {
+                const row = document.createElement('tr');
+                
+                // 커스텀 과목인지 확인 (원본에 없는 과목)
+                const isCustom = !Object.keys(examScopeData).includes(subject) || 
+                               (info.hasOwnProperty('_custom') && info._custom);
+                
+                if (isCustom) {
+                    row.classList.add('custom-subject');
+                } else {
+                    row.classList.add('original-subject');
+                }
+
+                row.innerHTML = `
+                    <td><strong>${subject}</strong></td>
+                    <td class="text-center">
+                        ${info.시간 || '-'}
+                    </td>
+                                        <td class="text-center">
+                        <span class="badge ${info.듣기평가 ? 'bg-success' : 'bg-secondary'}">${info.듣기평가 ? '해당' : '해당안함'}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge ${info.자율감독 ? 'bg-success' : 'bg-secondary'}">${info.자율감독 ? '해당' : '해당안함'}</span>
+                    </td>
+                    <td class="text-center">
+                        ${info.학년 || '-'}
+                    </td>
+                    <td class="text-center">
+                        ${Array.isArray(info.담당교사) ? info.담당교사.join(', ') : info.담당교사 || '-'}
+                    </td>
+
+                `;
+                
+                tbody.appendChild(row);
+            }
+        }
+
+
+
+
+
+
+
+        // 완전 초기화 (모든 데이터 삭제)
+        async function completeResetExamScope() {
+            if (!confirm('업로드한 파일과 표 내용을 모두 지우고 빈 화면으로 돌아갑니다. 이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/complete-reset-exam-scope', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showModalAlert('성공', data.message, 'success');
+                    loadExamScopeData(); // 테이블 새로고침
+                } else {
+                    showModalAlert('오류', data.error, 'error');
+                }
+            } catch (error) {
+                showModalAlert('오류', '완전 초기화 중 오류가 발생했습니다.', 'error');
+                console.error('Error completing full reset:', error);
+            }
+        }
+
+
+
+
+
+        // 모달 알림 표시 (커스텀 함수)
+        function showModalAlert(title, message, type) {
+            const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+            document.getElementById('alertModalTitle').textContent = title;
+            document.getElementById('alertModalBody').textContent = message;
+            
+            const modalContent = document.querySelector('#alertModal .modal-content');
+            modalContent.className = 'modal-content';
+            
+            if (type === 'error') {
+                modalContent.classList.add('border-danger');
+            } else if (type === 'success') {
+                modalContent.classList.add('border-success');
+            }
+            
+            modal.show();
+        }
+
+        // 파일 업로드 함수
+        async function uploadExamScopeFile() {
+            const fileInput = document.getElementById('examScopeFile');
+            const uploadStatus = document.getElementById('uploadStatus');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showModalAlert('오류', '업로드할 파일을 선택해주세요.', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // 파일 검증
+            if (!validateFile(file)) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 상태 표시
+            uploadStatus.style.display = 'block';
+            uploadStatus.className = 'alert alert-info';
+            uploadStatus.innerHTML = '<i class="fas fa-info-circle me-2"></i>파일을 업로드하고 있습니다...';
+            
+            try {
+                const response = await fetch('/api/upload-exam-scope-file', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    uploadStatus.className = 'alert alert-success';
+                    uploadStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + data.message;
+                    
+                    // 성공 후 파일 입력 초기화
+                    fileInput.value = '';
+                    
+                    // 3초 후 상태 메시지 숨기기
+                    setTimeout(() => {
+                        uploadStatus.style.display = 'none';
+                    }, 3000);
+                    
+                    // 데이터 테이블 새로고침
+                    loadExamScopeData();
+                    
+                } else {
+                    uploadStatus.className = 'alert alert-danger';
+                    uploadStatus.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + data.error;
+                }
+                
+            } catch (error) {
+                uploadStatus.className = 'alert alert-danger';
+                uploadStatus.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>업로드 중 오류가 발생했습니다: ' + error.message;
+            }
+        }
+
+        // 과목 정보 템플릿 다운로드
+        async function downloadExamScopeTemplate() {
+            try {
+                const response = await fetch('/api/download-exam-scope-template');
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '과목_정보.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    showModalAlert('오류', '템플릿 다운로드 중 오류가 발생했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Error downloading template:', error);
+                showModalAlert('오류', '템플릿 다운로드 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 파일 선택 시 자동 업로드
+        function handleFileSelect(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                // 파일 크기 및 형식 검증
+                if (!validateFile(file)) {
+                    return;
+                }
+                
+                // 자동으로 업로드 실행
+                uploadExamScopeFile();
+            }
+        }
+        
+        // 파일 검증 함수
+        function validateFile(file) {
+            const allowedTypes = [
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+                'application/vnd.ms-excel' // .xls
+            ];
+            
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            
+            if (!allowedTypes.includes(file.type)) {
+                showModalAlert('오류', 'Excel 파일(.xlsx, .xls)만 업로드 가능합니다.', 'error');
+                return false;
+            }
+            
+            if (file.size > maxSize) {
+                showModalAlert('오류', '파일 크기는 10MB 이하여야 합니다.', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 드래그 앤 드롭 이벤트 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropZone = document.getElementById('uploadDropZone');
+            const fileInput = document.getElementById('examScopeFile');
+            
+            let dragCounter = 0;
+            
+            // 드래그 오버 이벤트
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            
+            // 드래그 엔터 이벤트
+            dropZone.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                dragCounter++;
+                dropZone.classList.add('dragover');
+            });
+            
+            // 드래그 리브 이벤트 (개선된 버전)
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                dragCounter--;
+                
+                // 드래그가 실제로 영역을 벗어났을 때만 클래스 제거
+                if (dragCounter === 0) {
+                    dropZone.classList.remove('dragover');
+                }
+            });
+            
+            // 드롭 이벤트
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dragCounter = 0;
+                dropZone.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    
+                    // 파일 검증
+                    if (!validateFile(file)) {
+                        return;
+                    }
+                    
+                    // 파일 입력에 설정
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // 자동으로 업로드 실행
+                    uploadExamScopeFile();
+                }
+            });
+            
+            // 클릭 이벤트 (파일 선택 다이얼로그 열기)
+            dropZone.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'BUTTON') {
+                    fileInput.click();
+                }
+            });
+        });
+
+
+
+        // 파일이 없을 때 메시지 표시
+        function showNoFileMessage(message) {
+            console.log('DEBUG: showNoFileMessage called with message:', message);
+            const tbody = document.getElementById('examScopeTableBody');
+            console.log('DEBUG: Found tbody element:', tbody);
+            
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-5">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle fa-2x mb-3"></i>
+                            <h5>${message}</h5>
+                            <p class="mb-0">위의 파일 업로드 섹션에서 과목 정보 파일을 업로드해주세요.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            console.log('DEBUG: No file message displayed');
+        }
+    </script>
+{% endblock %}
+</body>
+</html> 

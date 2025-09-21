@@ -3,55 +3,23 @@ from ortools.sat.python import cp_model
 import pandas as pd
 import itertools
 import json
+from data_loader import DataLoader
 
 # ---------------------------
-# 1. 데이터 로드 (이전 코드 그대로)
+# 1. 데이터 로드 (data_loader 사용)
 # ---------------------------
 
-### 분반배정표 읽기
+### 학생배정정보 읽기 (data_loader 사용)
 
-# 1. 데이터 읽기 (C14부터 유효 데이터)
-file = 'bunbanbaejeongpyo.xlsx'
-sheet = '분반배정표'
+# DataLoader 인스턴스 생성
+data_loader = DataLoader("uploads")
 
-# 과목명: 1행 C열부터
-df_header = pd.read_excel(file, sheet_name=sheet, header=None, nrows=1)
-subject_cols = df_header.iloc[0, 2:].tolist()  # C열부터 끝까지
-
-# 학생명: A열 14행부터
-df_students = pd.read_excel(file, sheet_name=sheet, header=None)
-student_rows = df_students.iloc[13:, :]  # 0-based index, 14행부터
-student_names = student_rows.iloc[:, 0].tolist()  # A열
-
-# 수강 데이터: 14행부터, C열부터
-enroll_matrix = student_rows.iloc[:, 2:]
-enroll_matrix.columns = subject_cols
-enroll_matrix.index = student_names
-
-# 빈값 미수강, 아니면 수강
-enroll_bool = ~enroll_matrix.isna()
-
-# 1번 딕셔너리: 과목별로 겹칠 수 없는 과목 리스트
-student_conflict_dict = {subj: [] for subj in subject_cols}
-
-# 2번 딕셔너리: {A: {B: [학생1, 학생2, ...]}}
-double_enroll_dict = {subj: {} for subj in subject_cols}
-
-# 모든 과목 쌍에 대해 검사
-for subj1, subj2 in itertools.combinations(subject_cols, 2):
-    # 두 과목을 모두 듣는 학생 리스트
-    both_students = enroll_bool.index[(enroll_bool[subj1]) & (enroll_bool[subj2])].tolist()
-    if both_students:
-        # 1번: conflict_dict에 양방향 추가
-        student_conflict_dict[subj1].append(subj2)
-        student_conflict_dict[subj2].append(subj1)
-        # 2번: double_enroll_dict에 양방향 추가
-        double_enroll_dict[subj1][subj2] = both_students
-        double_enroll_dict[subj2][subj1] = both_students
+# load_enrollment_data 함수 사용하여 데이터 로드
+student_conflict_dict, double_enroll_dict, student_names, enroll_bool = data_loader.load_enrollment_data()
 
 # 결과 예시 출력
 # print("1. 과목별 겹칠 수 없는 과목 리스트 예시:")
-# for k, v in list(conflict_dict.items())[:5]:
+# for k, v in list(student_conflict_dict.items())[:5]:
 #     print(f"{k}: {v[:5]}... (총 {len(v)}개)")
 #
 # print("\n2. 두 과목을 동시에 듣는 학생 딕셔너리 예시:")
@@ -66,74 +34,10 @@ with open('과목쌍_공동수강학생_딕셔너리.json', 'w', encoding='utf-8
     json.dump(double_enroll_dict, f, ensure_ascii=False, indent=2)
 
 
-### 시험 범위 읽기
-# 파일 및 시트명
-file = '시험 범위.xlsx'
-sheet = 0  # 첫 시트라면 0, 아니면 이름 입력
+### 과목 정보 읽기 (DataLoader 사용)
 
-# 데이터 읽기 (C열 3행부터)
-df = pd.read_excel(file, sheet_name=sheet, header=None)
-
-# 과목명 추출 (C열 3행부터)
-subject_names = df.iloc[2:, 2].dropna().astype(str).tolist()
-
-# 과목 정보 딕셔너리
-subject_info_dict = {}
-
-for idx, subject in enumerate(subject_names):
-    row_idx = idx + 2  # 0-based index, 실제 엑셀 3행부터 시작
-
-    # F열: 시간
-    time_val = df.iloc[row_idx, 5]
-    if pd.isna(time_val):
-        time_processed = None
-    elif isinstance(time_val, str):
-        try:
-            time_processed = int(time_val)
-        except ValueError:
-            time_processed = time_val  # 변환 불가시 원본 저장
-    else:
-        time_processed = int(time_val)
-
-    # G열: 듣기
-    listen_val = df.iloc[row_idx, 6]
-    if str(listen_val).strip().upper() in ['X', '0', '']:
-        listen_processed = 0
-    elif str(listen_val).strip().upper() in ['O', '1']:
-        listen_processed = 1
-    else:
-        listen_processed = 0
-
-    # H열: 자율
-    self_val = df.iloc[row_idx, 7]
-    if str(self_val).strip().upper() in ['X', '0', '']:
-        self_processed = 0
-    elif str(self_val).strip().upper() in ['O', '1']:
-        self_processed = 1
-    else:
-        self_processed = 0
-
-    # N열: 학년
-    grade_val = df.iloc[row_idx, 13]
-
-    # J~M열: 담당교사
-    teacher_cells = df.iloc[row_idx, 9:13]
-    teacher_list = []
-    for cell in teacher_cells:
-        if pd.isna(cell):
-            continue
-        # 콤마로 분리
-        teachers = [t.strip() for t in str(cell).split(',') if t.strip()]
-        teacher_list.extend(teachers)
-
-    # 딕셔너리 저장
-    subject_info_dict[subject] = {
-        '시간': time_processed,
-        '듣기': listen_processed,
-        '자율': self_processed,
-        '학년': grade_val,
-        '담당교사': teacher_list
-    }
+# DataLoader를 사용하여 과목 정보 로드 (이미 위에서 생성됨)
+subject_info_dict = data_loader.load_subject_info()
 
 # 결과 예시 출력
 # for subj, info in list(subject_info_dict.items())[:5]:
@@ -144,25 +48,8 @@ with open('subject_info.json', 'w', encoding='utf-8') as f:
     json.dump(subject_info_dict, f, ensure_ascii=False, indent=2)
 
 
-# 1. 듣기평가가 있는 과목 리스트 추출
-listening_subjects = [subject for subject, info in subject_info_dict.items() if info['듣기'] == 1]
-
-# 2. 듣기평가 충돌 딕셔너리 생성
-listening_conflict_dict = {subject: [] for subject in listening_subjects}
-for subj1, subj2 in itertools.combinations(listening_subjects, 2):
-    listening_conflict_dict[subj1].append(subj2)
-    listening_conflict_dict[subj2].append(subj1)
-
-# 3. 담당교사 충돌 딕셔너리 생성
-teacher_conflict_dict = {subject: [] for subject in subject_info_dict}
-subjects = list(subject_info_dict.keys())
-for i, subj1 in enumerate(subjects):
-    teachers1 = set(subject_info_dict[subj1]['담당교사'])
-    for subj2 in subjects[i+1:]:
-        teachers2 = set(subject_info_dict[subj2]['담당교사'])
-        if teachers1 & teachers2:  # 교사가 겹치면
-            teacher_conflict_dict[subj1].append(subj2)
-            teacher_conflict_dict[subj2].append(subj1)
+# DataLoader를 사용하여 충돌 딕셔너리 생성
+listening_conflict_dict, teacher_conflict_dict = data_loader.generate_conflict_dicts(subject_info_dict)
 
 # 4. 예시 출력
 # print("\n듣기평가 충돌 listening_conflict_dict 예시:")
@@ -174,43 +61,26 @@ for i, subj1 in enumerate(subjects):
 #     print(f"{subj}: {conflicts}")
 
 # 5. 필요시 저장
-with open('listening_conflict_dict.json', 'w', encoding='utf-8') as f:
-    json.dump(listening_conflict_dict, f, ensure_ascii=False, indent=2)
-with open('teacher_conflict_dict.json', 'w', encoding='utf-8') as f:
-    json.dump(teacher_conflict_dict, f, ensure_ascii=False, indent=2)
+data_loader.save_data_to_json(listening_conflict_dict, 'listening_conflict_dict.json')
+data_loader.save_data_to_json(teacher_conflict_dict, 'teacher_conflict_dict.json')
 
-### 시험 정보.xlsx 읽기
-file = '시험 정보.xlsx'
-sheet = 0  # 첫 시트라면 0, 아니면 시트명 입력
+### 시험 정보 읽기 (DataLoader 사용)
+exam_info = data_loader.load_exam_info_with_custom()
+exam_year = exam_info['학년도']
+exam_semester = exam_info['학기']
+exam_type = exam_info['고사종류']
+exam_dates = exam_info['시험날짜']
 
-# 1. 파일 전체 읽기 (헤더 없이)
-df = pd.read_excel(file, sheet_name=sheet, header=None)
-
-# 2. 1~3행: 년, 학기, 고사 종류
-exam_year = str(df.iloc[0, 1]).strip()    # 1행 B열
-exam_semester = str(df.iloc[1, 1]).strip()  # 2행 B열
-exam_type = str(df.iloc[2, 1]).strip()    # 3행 B열
-
-# 3. 4~9행: 제1일~제6일 시험 날짜
-exam_dates = {}
-for i in range(6):  # 0~5
-    day_label = str(df.iloc[3 + i, 0]).strip()   # 4~9행 A열: '제1일', '제2일', ...
-    date_val = str(df.iloc[3 + i, 1]).strip()   # 4~9행 B열: '6월 14일' 등
-    exam_dates[day_label] = date_val
-
-# 4. 10~33행: 각 시험 타임(제n일 m교시)의 시작/종료/진행시간
+# date_periods에서 시험타임 정보 생성
 exam_times = {}
-for i in range(24):  # 0~23
-    row = 9 + i  # 10~33행
-    time_label = str(df.iloc[row, 0]).strip()  # A열: '제1일1교시' 등
-    start_time = str(df.iloc[row, 1]).strip()  # B열: 시작시간
-    end_time = str(df.iloc[row, 2]).strip()    # C열: 종료시간
-    duration = int(df.iloc[row, 3]) if not pd.isna(df.iloc[row, 3]) else None  # D열: 진행시간(분)
-    exam_times[time_label] = {
-        '시작': start_time,
-        '종료': end_time,
-        '진행시간': duration
-    }
+for day, periods in exam_info['date_periods'].items():
+    for period, time_info in periods.items():
+        slot_label = f'제{day}일{period}교시'
+        exam_times[slot_label] = {
+            '시작': time_info['start_time'],
+            '종료': time_info['end_time'],
+            '진행시간': int(time_info['duration'])
+        }
 
 # 5. 결과 예시 출력
 # print(f"학년도: {exam_year}")
@@ -222,59 +92,13 @@ for i in range(24):  # 0~23
 #     print(f"{k}: {v}")
 
 # 6. 딕셔너리로 묶어서 저장(필요시)
-exam_info = {
-    '학년도': exam_year,
-    '학기': exam_semester,
-    '고사종류': exam_type,
-    '시험날짜': exam_dates,
-    '시험타임': exam_times
-}
+data_loader.save_data_to_json(exam_info, 'exam_info.json')
 
-import json
-with open('exam_info.json', 'w', encoding='utf-8') as f:
-    json.dump(exam_info, f, ensure_ascii=False, indent=2)
-
-### 시험 불가 교사 읽기
-# 파일 읽기
-file = '시험 불가 교사.xlsx'
-sheet = 0  # 첫 시트라면 0, 아니면 시트명 입력
-
-df = pd.read_excel(file, sheet_name=sheet, header=None)
-
-# A2부터 아래로 교사명
-teacher_names = df.iloc[1:, 0].dropna().astype(str).tolist()
-
-# B~Y열: 24개 슬롯 (제1일1교시~제6일4교시)
-slot_codes = [
-    f'{day}{period}교시'
-    for day in range(1, 7)       # 1~6일
-    for period in range(1, 5)    # 1~4교시
-]
-# ['11교시', '12교시', ..., '64교시']
-
-# 제n일m교시 → '제n일m교시'
-slot_labels = [f'제{code[0]}일{code[1]}교시' for code in slot_codes]
-
-# # 실제로는 ['제1일1교시', '제1일2교시', ...] 형태
-# slot_labels = []
-# for day in range(1, 7):
-#     for period in range(1, 5):
-#         slot_labels.append(f'제{day}일{period}교시')
-
-teacher_unavailable_dates = {}
-
-for i, teacher in enumerate(teacher_names):
-    # B~Y열 (1~24)
-    unavailable_slots = []
-    for j, slot_label in enumerate(slot_labels):
-        val = df.iloc[i+1, j+1]  # i+1: 데이터는 2행부터, j+1: B열부터
-        if not pd.isna(val) and int(val) == 1:
-            unavailable_slots.append(slot_label)
-    teacher_unavailable_dates[teacher] = unavailable_slots
+### 시험 불가 교사 읽기 (DataLoader 사용)
+teacher_unavailable_dates = data_loader.load_teacher_unavailable_with_custom()
 
 # 저장
-with open('teacher_unavailable_dates.json', 'w', encoding='utf-8') as f:
-    json.dump(teacher_unavailable_dates, f, ensure_ascii=False, indent=2)
+data_loader.save_data_to_json(teacher_unavailable_dates, 'teacher_unavailable_dates.json')
 
 # ---------------------------
 # 2. 변수 선언

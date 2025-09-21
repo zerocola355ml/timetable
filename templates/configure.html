@@ -22,34 +22,11 @@
                     배정 설정
                 </h5>
             </div>
-            <div class="card-body">
+                    <div class="card-body">
                 <form id="configForm">
                     <!-- Basic Settings -->
                     <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h6 class="text-primary mb-3">
-                                <i class="fas fa-calendar-day me-2"></i>
-                                기본 설정
-                            </h6>
-                            
-                            <div class="mb-3">
-                                <label for="maxExamsPerDay" class="form-label">
-                                    학생별 하루 최대 시험 개수
-                                </label>
-                                <input type="number" class="form-control" id="maxExamsPerDay" 
-                                       value="3" min="1" max="5">
-                                <div class="form-text">한 학생이 하루에 치를 수 있는 최대 시험 개수</div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="maxHardExamsPerDay" class="form-label">
-                                    학생별 하루 최대 어려운 시험 개수
-                                </label>
-                                <input type="number" class="form-control" id="maxHardExamsPerDay" 
-                                       value="2" min="1" max="3">
-                                <div class="form-text">한 학생이 하루에 치를 수 있는 최대 어려운 시험 개수</div>
-                            </div>
-                        </div>
+                        
 
                         <div class="col-md-6">
                             <h6 class="text-primary mb-3">
@@ -58,50 +35,20 @@
                             </h6>
                             
                             <div class="mb-3">
-                                <label for="hardExamThreshold" class="form-label">
-                                    어려운 과목 기준 시간 (분)
+                                <label for="solveTimeLimit" class="form-label">
+                                    최대 풀이 시간 (초)
                                 </label>
-                                <input type="number" class="form-control" id="hardExamThreshold" 
-                                       value="60" min="30" max="120">
-                                <div class="form-text">이 시간 이상의 과목을 어려운 과목으로 분류</div>
+                                <input type="number" class="form-control" id="solveTimeLimit" 
+                                       value="120" min="10" max="600" step="10">
+                                <div class="form-text">최적화 알고리즘이 실행되는 최대 시간입니다. (10초~600초)</div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="examDays" class="form-label">
-                                    시험 일수
-                                </label>
-                                <input type="number" class="form-control" id="examDays" 
-                                       value="5" min="1" max="7">
-                                <div class="form-text">시험을 치를 총 일수</div>
-                            </div>
+
+                            <!-- 시험 일수는 /exam-info에서 설정합니다. -->
                         </div>
                     </div>
 
-                    <!-- Period Limits -->
-                    <div class="mb-4">
-                        <h6 class="text-primary mb-3">
-                            <i class="fas fa-hourglass-half me-2"></i>
-                            교시별 시간 제한 (분)
-                        </h6>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <label for="period1Limit" class="form-label">1교시</label>
-                                <input type="number" class="form-control" id="period1Limit" 
-                                       value="80" min="30" max="120">
-                            </div>
-                            <div class="col-md-4">
-                                <label for="period2Limit" class="form-label">2교시</label>
-                                <input type="number" class="form-control" id="period2Limit" 
-                                       value="50" min="30" max="120">
-                            </div>
-                            <div class="col-md-4">
-                                <label for="period3Limit" class="form-label">3교시</label>
-                                <input type="number" class="form-control" id="period3Limit" 
-                                       value="100" min="30" max="120">
-                            </div>
-                        </div>
-                        <div class="form-text">각 교시별로 배정 가능한 최대 시험 시간</div>
-                    </div>
+                    <!-- 교시별 시간 제한은 /exam-info에서 설정합니다. -->
 
                     <!-- Action Buttons -->
                     <div class="text-center">
@@ -113,6 +60,15 @@
                             <i class="fas fa-magic me-2"></i>
                             시험 시간표 생성
                         </button>
+                    </div>
+                    
+                    <!-- Error Message Container -->
+                    <div id="errorContainer" class="mt-3" style="display: none;">
+                        <div class="alert alert-danger" role="alert" style="white-space: pre-line; max-height: 400px; overflow-y: auto;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span id="errorMessage"></span>
+                            <button type="button" class="btn-close float-end" onclick="hideErrorContainer()" aria-label="Close"></button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -129,9 +85,24 @@
             <div class="card-body">
                 <div class="progress mb-3">
                     <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                         role="progressbar" style="width: 0%"></div>
+                         role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                        <span id="progressText">0%</span>
+                    </div>
                 </div>
-                <p class="text-muted mb-0">최적화 알고리즘이 실행 중입니다. 잠시만 기다려주세요...</p>
+                <div class="row">
+                    <div class="col-md-8">
+                        <p class="text-muted mb-0" id="progressMessage">최적화 알고리즘이 실행 중입니다. 잠시만 기다려주세요...</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <small class="text-muted" id="progressDetails">진행률: 0%</small>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-info">
+                        <i class="fas fa-info-circle me-1"></i>
+                        최적화 알고리즘은 설정된 시간 제한 내에서 최적의 해를 찾습니다.
+                    </small>
+                </div>
             </div>
         </div>
 
@@ -146,17 +117,16 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <h6 class="text-primary">어려운 과목 기준</h6>
+                        <h6 class="text-primary">학생 부담 조정</h6>
                         <p class="small text-muted">
-                            이 시간(분) 이상의 과목을 어려운 과목으로 분류합니다. 
-                            어려운 과목은 하루에 제한된 개수만 배정됩니다.
+                            학생별 하루 최대 시험 개수, 어려운 시험 개수, 어려운 과목 기준 시간은 
+                            <a href="{{ url_for('student_burden_config') }}">학생 부담 조정</a> 페이지에서 설정합니다.
                         </p>
                     </div>
                     <div class="col-md-6">
-                        <h6 class="text-primary">교시별 시간 제한</h6>
+                        <h6 class="text-primary">시험 일수/교시 시간</h6>
                         <p class="small text-muted">
-                            각 교시별로 배정 가능한 최대 시험 시간을 설정합니다. 
-                            이 시간을 초과하는 과목은 해당 교시에 배정되지 않습니다.
+                            시험 일수와 교시별 시간은 데이터 검토의 "시험 정보 편집"에서 설정합니다.
                         </p>
                     </div>
                 </div>
@@ -175,32 +145,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function getConfigData() {
     return {
-        max_exams_per_day: parseInt(document.getElementById('maxExamsPerDay').value),
-        max_hard_exams_per_day: parseInt(document.getElementById('maxHardExamsPerDay').value),
-        hard_exam_threshold: parseInt(document.getElementById('hardExamThreshold').value),
-        exam_days: parseInt(document.getElementById('examDays').value),
-        periods_per_day: 3, // Fixed for now
-        period_limits: {
-            '1교시': parseInt(document.getElementById('period1Limit').value),
-            '2교시': parseInt(document.getElementById('period2Limit').value),
-            '3교시': parseInt(document.getElementById('period3Limit').value)
-        }
+        solve_time_limit: parseInt(document.getElementById('solveTimeLimit').value),
+        // 학생 부담 조정 설정은 /student-burden-config에서 관리
+        // 일수/교시 시간은 /exam-info에서 관리
     };
 }
 
 function validateConfig(config) {
     const errors = [];
     
-    if (config.max_hard_exams_per_day > config.max_exams_per_day) {
-        errors.push('어려운 시험 개수는 전체 시험 개수보다 클 수 없습니다.');
-    }
+    // 학생 부담 조정 설정 검증은 /student-burden-config에서 수행
     
-    if (config.hard_exam_threshold < 30 || config.hard_exam_threshold > 120) {
-        errors.push('어려운 과목 기준 시간은 30분에서 120분 사이여야 합니다.');
-    }
+    // 시험 일수 검증은 /exam-info에서 수행
     
-    if (config.exam_days < 1 || config.exam_days > 7) {
-        errors.push('시험 일수는 1일에서 7일 사이여야 합니다.');
+    // 풀이 시간 제한 검증
+    const solveTimeLimit = parseInt(document.getElementById('solveTimeLimit').value);
+    if (solveTimeLimit < 10 || solveTimeLimit > 600) {
+        errors.push('최대 풀이 시간은 10초에서 600초 사이여야 합니다.');
     }
     
     return errors;
@@ -219,56 +180,199 @@ function createSchedule() {
     document.getElementById('progressCard').style.display = 'block';
     document.getElementById('createBtn').disabled = true;
     
-    // Simulate progress
-    const progressBar = document.querySelector('.progress-bar');
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        progress += Math.random() * 15;
-        if (progress > 90) progress = 90;
-        progressBar.style.width = progress + '%';
-    }, 500);
+    // Update progress message
+    function updateProgress(message, progress = null) {
+        document.getElementById('progressMessage').textContent = message;
+        
+        // 진행률이 제공되면 진행률 바 업데이트
+        if (progress !== null) {
+            const progressBar = document.querySelector('.progress-bar');
+            progressBar.style.width = progress + '%';
+            progressBar.setAttribute('aria-valuenow', progress);
+            document.getElementById('progressText').textContent = progress + '%';
+            document.getElementById('progressDetails').textContent = '진행률: ' + progress + '%';
+        }
+    }
+    
+    updateProgress('데이터를 준비하고 있습니다...');
+    
+    // 실제 서버 진행상황을 폴링
+    let statusInterval = setInterval(async () => {
+        try {
+            const statusResponse = await fetch('/api/schedule-status');
+            const statusData = await statusResponse.json();
+            
+            updateProgress(statusData.step, statusData.progress);
+            
+            // 진행 완료되면 폴링 중지
+            if (!statusData.is_running) {
+                clearInterval(statusInterval);
+                
+                if (statusData.result === 'success') {
+                    // 성공시 결과 페이지로 이동
+                    setTimeout(() => {
+                        window.location.href = '/results';
+                    }, 2000); // 2초 후 이동
+                } else if (statusData.error) {
+                    // 에러시 에러 메시지는 이미 fetch 응답에서 처리됨
+                }
+            }
+        } catch (error) {
+            console.error('Status polling error:', error);
+        }
+    }, 1000); // 1초마다 상태 확인
     
     // Send request
+    const requestBody = { config: config, time_limit: config.solve_time_limit || 120 };
+    console.log('DEBUG: Sending request with body:', requestBody);
+    
     fetch('/api/schedule', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ config: config })
+        body: JSON.stringify(requestBody)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('DEBUG: Response status:', response.status);
+        console.log('DEBUG: Response headers:', response.headers);
+        return response.json();
+    })
     .then(data => {
-        clearInterval(progressInterval);
-        progressBar.style.width = '100%';
+        console.log('DEBUG: Received response data:', data);
+        console.log('DEBUG: data.success:', data.success);
+        console.log('DEBUG: data.error:', data.error);
+        clearInterval(statusInterval); // 진행 상황 인터벌 정리
         
         if (data.success) {
-            showAlert('시험 시간표가 성공적으로 생성되었습니다!', 'success');
+            updateProgress('시험 시간표가 성공적으로 생성되었습니다!');
+            showSuccessInButtonArea('시험 시간표가 성공적으로 생성되었습니다!');
             setTimeout(() => {
                 window.location.href = '/results';
             }, 1500);
         } else {
-            showAlert(data.error || '시험 시간표 생성에 실패했습니다.', 'danger');
+            console.log('DEBUG: Error response data:', data);
+            console.log('DEBUG: data.diagnosis:', data.diagnosis);
+            console.log('DEBUG: data.details:', data.details);
+            
+            let errorMessage = data.error || '시험 시간표 생성에 실패했습니다.';
+            
+            // 진단 정보가 있으면 더 상세한 에러 메시지 표시
+            if (data.diagnosis && Object.keys(data.diagnosis).length > 0) {
+                errorMessage = data.error || '시험 시간표 생성에 실패했습니다.';
+                
+                // 진단 정보를 추가로 표시
+                if (data.diagnosis.possible_causes && data.diagnosis.possible_causes.length > 0) {
+                    errorMessage += '\n\n🔍 가능한 원인:\n';
+                    data.diagnosis.possible_causes.forEach(cause => {
+                        errorMessage += `• ${cause}\n`;
+                    });
+                }
+                
+                if (data.diagnosis.recommendations && data.diagnosis.recommendations.length > 0) {
+                    errorMessage += '\n💡 해결 방법:\n';
+                    data.diagnosis.recommendations.forEach(rec => {
+                        errorMessage += `• ${rec}\n`;
+                    });
+                }
+                
+                if (data.diagnosis.constraint_info) {
+                    const info = data.diagnosis.constraint_info;
+                    errorMessage += '\n📊 제약조건 정보:\n';
+                    errorMessage += `• 총 슬롯 수: ${info.total_slots || 'N/A'}\n`;
+                    errorMessage += `• 총 과목 수: ${info.total_subjects || 'N/A'}\n`;
+                    
+                    if (info.subjects_with_few_slots && info.subjects_with_few_slots.length > 0) {
+                        errorMessage += `• 배정 가능 슬롯이 적은 과목: ${info.subjects_with_few_slots.join(', ')}\n`;
+                    }
+                    
+                    if (info.high_conflict_subjects && info.high_conflict_subjects.length > 0) {
+                        errorMessage += `• 충돌이 많은 과목: ${info.high_conflict_subjects.join(', ')}\n`;
+                    }
+                }
+            } else {
+                // 기존 에러 메시지 처리
+                if (errorMessage.includes('시간') || errorMessage.includes('time') || 
+                    errorMessage.includes('NO_SOLUTION') || errorMessage.includes('INFEASIBLE')) {
+                    errorMessage = '시험 시간표 생성에 실패했습니다. 가능한 원인:\n' +
+                                 '• 풀이 시간이 부족할 수 있습니다. 시간을 늘려보세요.\n' +
+                                 '• 시험 일수나 교시 수가 너무 많을 수 있습니다.\n' +
+                                 '• 과목 간 충돌이 너무 많을 수 있습니다.\n' +
+                                 '• 교사 불가능 시간이 너무 많을 수 있습니다.';
+                }
+            }
+            
+            updateProgress('시험 시간표 생성에 실패했습니다.');
+            showErrorInButtonArea(errorMessage);
             document.getElementById('progressCard').style.display = 'none';
             document.getElementById('createBtn').disabled = false;
+            
+            // statusInterval도 정리
+            if (typeof statusInterval !== 'undefined') {
+                clearInterval(statusInterval);
+            }
         }
     })
     .catch(error => {
-        clearInterval(progressInterval);
-        console.error('Error:', error);
-        showAlert('시험 시간표 생성 중 오류가 발생했습니다.', 'danger');
+        console.error('DEBUG: Fetch error:', error);
+        clearInterval(statusInterval); // 진행 상황 인터벌 정리
+        updateProgress('네트워크 오류가 발생했습니다.');
+        showErrorInButtonArea('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
         document.getElementById('progressCard').style.display = 'none';
         document.getElementById('createBtn').disabled = false;
     });
 }
 
+function showErrorInButtonArea(message) {
+    const errorContainer = document.getElementById('errorContainer');
+    const errorMessage = document.getElementById('errorMessage');
+    const alertDiv = errorContainer.querySelector('.alert');
+    
+    // 줄바꿈을 HTML로 변환
+    const formattedMessage = message.replace(/\n/g, '<br>');
+    errorMessage.innerHTML = formattedMessage;
+    
+    errorContainer.style.display = 'block';
+    alertDiv.classList.remove('alert-success');
+    alertDiv.classList.add('alert-danger');
+    
+    // 버튼 근처로 스크롤
+    errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // 실패 메시지는 자동으로 사라지지 않음 - 사용자가 수동으로 닫아야 함
+}
+
+function hideErrorContainer() {
+    const errorContainer = document.getElementById('errorContainer');
+    errorContainer.style.display = 'none';
+}
+
+function showSuccessInButtonArea(message) {
+    const errorContainer = document.getElementById('errorContainer');
+    const errorMessage = document.getElementById('errorMessage');
+    const alertDiv = errorContainer.querySelector('.alert');
+    
+    // 줄바꿈을 HTML로 변환
+    const formattedMessage = message.replace(/\n/g, '<br>');
+    errorMessage.innerHTML = formattedMessage;
+    
+    errorContainer.style.display = 'block';
+    alertDiv.classList.remove('alert-danger');
+    alertDiv.classList.add('alert-success');
+    
+    // 버튼 근처로 스크롤
+    errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // 5초 후 자동으로 숨기기
+    setTimeout(() => {
+        errorContainer.style.display = 'none';
+    }, 5000);
+}
+
 function resetToDefaults() {
-    document.getElementById('maxExamsPerDay').value = 3;
-    document.getElementById('maxHardExamsPerDay').value = 2;
-    document.getElementById('hardExamThreshold').value = 60;
-    document.getElementById('examDays').value = 5;
-    document.getElementById('period1Limit').value = 80;
-    document.getElementById('period2Limit').value = 50;
-    document.getElementById('period3Limit').value = 100;
+    document.getElementById('solveTimeLimit').value = 120;
+    // 학생 부담 조정 설정은 /student-burden-config에서 관리
+    // 시험 일수/교시 제한 기본값은 /exam-info에서 관리
     
     showAlert('설정이 기본값으로 초기화되었습니다.', 'info');
 }
@@ -279,13 +383,9 @@ function loadSavedConfig() {
     if (saved) {
         try {
             const config = JSON.parse(saved);
-            document.getElementById('maxExamsPerDay').value = config.max_exams_per_day || 3;
-            document.getElementById('maxHardExamsPerDay').value = config.max_hard_exams_per_day || 2;
-            document.getElementById('hardExamThreshold').value = config.hard_exam_threshold || 60;
-            document.getElementById('examDays').value = config.exam_days || 5;
-            document.getElementById('period1Limit').value = config.period_limits?.['1교시'] || 80;
-            document.getElementById('period2Limit').value = config.period_limits?.['2교시'] || 50;
-            document.getElementById('period3Limit').value = config.period_limits?.['3교시'] || 100;
+            document.getElementById('solveTimeLimit').value = config.solve_time_limit || 120;
+            // 학생 부담 조정 설정은 /student-burden-config에서 관리
+            // /exam-info에서 관리하는 값들은 불러오지 않음
         } catch (e) {
             console.error('Failed to load saved config:', e);
         }
@@ -297,5 +397,16 @@ document.addEventListener('change', function() {
     const config = getConfigData();
     localStorage.setItem('examScheduleConfig', JSON.stringify(config));
 });
+
+function validateSolveTimeLimit(input) {
+    const value = parseInt(input.value);
+    if (value < 10) {
+        input.value = 10;
+        showAlert('최소 풀이 시간은 10초입니다.', 'warning');
+    } else if (value > 600) {
+        input.value = 600;
+        showAlert('최대 풀이 시간은 600초입니다.', 'warning');
+    }
+}
 </script>
 {% endblock %} 

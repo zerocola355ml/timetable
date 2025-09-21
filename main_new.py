@@ -11,7 +11,6 @@ def main():
     config = ExamSchedulingConfig(
         max_exams_per_day=3,           # 학생별 하루 최대 시험 개수
         max_hard_exams_per_day=2,      # 학생별 하루 최대 어려운 시험 개수
-        hard_exam_threshold=60,        # 어려운 시험 기준 시간(분) - 사용자가 조정 가능!
         exam_days=5,                   # 시험 일수
         periods_per_day=3,             # 하루 교시 수
         period_limits={                # 교시별 최대 시간 제한
@@ -22,7 +21,7 @@ def main():
     )
     
     # 2. 애플리케이션 초기화
-    app = ExamSchedulerApp(config=config)
+    app = ExamSchedulerApp(config=config, data_dir="uploads")
     
     # 3. 데이터 로드
     print("데이터를 로드하는 중...")

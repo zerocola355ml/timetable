@@ -21,9 +21,9 @@
             <div class="col-md-4 mb-4">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <i class="fas fa-upload fa-3x text-primary mb-3"></i>
-                        <h5 class="card-title">파일 업로드</h5>
-                        <p class="card-text">엑셀 파일을 업로드하여 학생, 과목, 교사 정보를 입력하세요.</p>
+                        <i class="fas fa-edit fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">데이터 편집</h5>
+                        <p class="card-text">학생 충돌, 과목 정보, 시험 일정, 교사 제약을 직접 편집하세요.</p>
                     </div>
                 </div>
             </div>
@@ -58,12 +58,12 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <h6 class="text-primary">필요한 파일</h6>
+                        <h6 class="text-primary">데이터 편집</h6>
                         <ul class="list-unstyled">
-                            <li><i class="fas fa-file-excel text-success me-2"></i>bunbanbaejeongpyo.xlsx</li>
-                            <li><i class="fas fa-file-excel text-success me-2"></i>시험 범위.xlsx</li>
-                            <li><i class="fas fa-file-excel text-success me-2"></i>시험 정보.xlsx</li>
-                            <li><i class="fas fa-file-excel text-success me-2"></i>시험 불가 교사.xlsx</li>
+                            <li><i class="fas fa-users text-success me-2"></i>학생 충돌 편집</li>
+                            <li><i class="fas fa-book text-success me-2"></i>과목 정보 편집</li>
+                            <li><i class="fas fa-calendar text-success me-2"></i>시험 일정 편집</li>
+                            <li><i class="fas fa-chalkboard-teacher text-success me-2"></i>교사 제약 편집</li>
                         </ul>
                     </div>
                     <div class="col-md-6">
@@ -82,9 +82,9 @@
         <!-- Action Buttons -->
         <div class="text-center">
             <div class="d-grid gap-3 d-md-block">
-                <a href="{{ url_for('upload_files') }}" class="btn btn-primary btn-lg">
-                    <i class="fas fa-upload me-2"></i>
-                    파일 업로드 시작
+                <a href="{{ url_for('data_review') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-edit me-2"></i>
+                    데이터 편집 시작
                 </a>
                 <a href="{{ url_for('configure') }}" class="btn btn-outline-primary btn-lg">
                     <i class="fas fa-cog me-2"></i>
