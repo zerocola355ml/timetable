@@ -204,7 +204,7 @@ class ExamSchedulerApp:
             subject2 = conflict.get('subject2')
             
             if subject1 and subject2:
-                # 양방향 충돌 관계 설정
+                # 양방향 충돌 관계 설정 
                 if subject1 not in conflict_dict:
                     conflict_dict[subject1] = []
                 if subject2 not in conflict_dict:
