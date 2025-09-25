@@ -696,7 +696,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 모든 편집 초기화 함수
 async function resetAllData() {
-    if (confirm('모든 편집된 데이터를 원본 엑셀 파일로 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    if (confirm('uploads 폴더 내 모든 파일을 삭제하여 완전히 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
         try {
             const response = await fetch('/api/reset-all-data', {
                 method: 'POST',
@@ -707,7 +707,7 @@ async function resetAllData() {
             const data = await response.json();
 
             if (data.success) {
-                            showModalAlert('성공', '모든 편집된 데이터가 원본 엑셀 파일로 초기화되었습니다.', 'success');
+                            showModalAlert('성공', 'uploads 폴더가 완전히 초기화되었습니다. (' + data.deleted_files + '개 항목 삭제됨)', 'success');
             // 페이지 새로고침 또는 데이터 요약 다시 로드
             location.reload();
         } else {

@@ -163,13 +163,9 @@
     <!-- 다음 단계 버튼 -->
     <div class="row mt-4">
         <div class="col-12 text-center">
-            <a href="{{ url_for('configure') }}" class="btn btn-primary btn-lg">
+            <a href="{{ url_for('schedule_manager') }}" class="btn btn-primary btn-lg">
                 <i class="fas fa-arrow-right me-2"></i>
-                다음 단계: 설정 조정
-            </a>
-            <a href="{{ url_for('data_review') }}" class="btn btn-outline-secondary btn-lg ms-2">
-                <i class="fas fa-edit me-2"></i>
-                데이터 편집
+                다음 단계: 시간표 작성
             </a>
         </div>
     </div>
@@ -180,7 +176,7 @@
 
 // 모든 편집 초기화 함수
 async function resetAllData() {
-    if (confirm('모든 편집된 데이터를 원본 엑셀 파일로 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    if (confirm('모든 설정을 삭제하여 완전히 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
         try {
             const response = await fetch('/api/reset-all-data', {
                 method: 'POST',
@@ -191,7 +187,7 @@ async function resetAllData() {
             const data = await response.json();
 
             if (data.success) {
-                alert('모든 편집된 데이터가 원본 엑셀 파일로 초기화되었습니다.');
+                alert('모든 설정이 완전히 초기화되었습니다.');
                 // 페이지 새로고침 또는 데이터 요약 다시 로드
                 location.reload();
             } else {

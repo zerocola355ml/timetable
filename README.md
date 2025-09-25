@@ -1,70 +1,95 @@
-# 지능형 시험 시간표 자동 배치 시스템
+# 🎓 지능형 시험 시간표 자동 배치 시스템
+- 필수 설정 파일은 익명화되어 샘플로 sample_data 폴더에 있으니 활용하실 수 있습니다.
 
-Intelligent Exam Timetable Scheduling System
+> **Google OR-Tools를 활용한 제약 조건 프로그래밍 기반 시험 시간표 최적화 웹 애플리케이션**
 
-## 📋 프로젝트 개요
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-2.0+-green.svg)](https://flask.palletsprojects.com)
+[![OR-Tools](https://img.shields.io/badge/OR--Tools-CP--SAT-orange.svg)](https://developers.google.com/optimization)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-복잡한 제약 조건을 가진 시험 시간표를 자동으로 생성하고 수동으로 조정할 수 있는 웹 기반 시스템입니다. 제약 조건 프로그래밍(CP-SAT)을 활용하여 최적의 시간표를 생성하며, 직관적인 드래그 앤 드롭 인터페이스를 제공합니다.
+## 📋 프로젝트 소개
 
-## ✨ 주요 기능
+복잡한 제약 조건을 가진 교육기관의 시험 시간표를 **자동으로 생성**하고 **수동으로 조정**할 수 있는 웹 기반 시스템입니다. 
 
-### 🤖 자동 시간표 생성
-- **제약 조건 프로그래밍**: Google OR-Tools CP-SAT 솔버 활용
-- **다중 제약 조건 처리**: 교사, 학생, 과목별 충돌 방지
-- **학생 부담 최적화**: 일일 시험 수 제한 및 어려운 과목 분산
-- **실시간 진행률 표시**: 생성 과정 모니터링
+**제약 조건 프로그래밍(CP-SAT)**을 활용하여 다수의 제약 조건을 동시에 만족하는 최적의 시간표를 생성하며, 직관적인 **드래그 앤 드롭 인터페이스**를 통해 사용자가 실시간으로 조정할 수 있습니다.
 
-### 🎯 수동 배치 시스템
-- **드래그 앤 드롭**: 직관적인 과목 배치
-- **실시간 검증**: 배치 가능성 즉시 확인
-- **스마트 추천**: 최적 배치 위치 추천
-- **자동 저장**: 수동 배치 데이터 영속성
+### 🎯 해결하는 문제
+- **복잡한 제약 조건**: 교사 스케줄, 학생 충돌, 과목 특성 등 다차원 제약
+- **수동 작업의 비효율성**: 기존 엑셀 기반 수동 배치의 시간 소모
+- **검증의 어려움**: 충돌 검사 및 최적화 평가의 복잡성
+- **사용자 친화성**: 기술적 배경이 없는 교육 관계자도 쉽게 사용
 
-### 📊 데이터 관리
-- **다양한 데이터 소스**: Excel, JSON 파일 지원
-- **동적 설정**: JSON 기반 유연한 제약 조건 관리
-- **실시간 분석**: 학생 부담 및 충돌 분석
+## ✨ 핵심 기능
+
+### 🤖 자동 최적화
+- **Google OR-Tools CP-SAT 솔버** 활용한 제약 조건 프로그래밍
+- **다중 제약 조건 동시 처리**: 교사, 학생, 과목별 충돌 방지
+- **학생 부담 최적화**: 일일 시험 수 제한 및 어려운 과목 분산 배치
+- **실시간 진행률 모니터링**: 최적화 과정 시각화
+
+### 🎮 인터랙티브 수동 조정
+- **드래그 앤 드롭 인터페이스**: 직관적인 과목 배치
+- **실시간 검증 시스템**: 배치 가능성 즉시 확인
+- **스마트 추천 엔진**: 최적 배치 위치 자동 추천
+- **자동 저장**: 수동 배치 데이터 영속성 보장
+
+### 📊 종합 데이터 관리
+- **다양한 데이터 소스 지원**: Excel, JSON 파일 통합 처리
+- **동적 설정 시스템**: JSON 기반 유연한 제약 조건 관리
+- **실시간 분석 대시보드**: 학생 부담 및 충돌 통계 제공
 
 ## 🛠️ 기술 스택
 
-### Backend
-- **Python 3.x**: 핵심 개발 언어
-- **Flask**: 웹 프레임워크
+### Backend Architecture
+- **Python 3.8+**: 핵심 개발 언어
+- **Flask**: 경량 웹 프레임워크
 - **Google OR-Tools (CP-SAT)**: 제약 조건 프로그래밍 솔버
-- **Pandas**: 데이터 처리 및 분석
-- **OpenPyXL**: Excel 파일 처리
+- **Pandas**: 고성능 데이터 처리 및 분석
+- **OpenPyXL**: Excel 파일 읽기/쓰기
 
-### Frontend
-- **HTML5/CSS3**: 반응형 웹 인터페이스
-- **JavaScript (ES6+)**: 동적 UI 및 사용자 상호작용
-- **Bootstrap 5**: UI 프레임워크
-- **Font Awesome**: 아이콘 라이브러리
+### Frontend Technology
+- **HTML5/CSS3**: 시맨틱 마크업 및 반응형 디자인
+- **JavaScript (ES6+)**: 모던 자바스크립트 및 비동기 처리
+- **Bootstrap 5**: 반응형 UI 컴포넌트
+- **Font Awesome**: 아이콘 시스템
 
-## 🚀 설치 및 실행
+### Development & Deployment
+- **Git**: 버전 관리
+- **JSON**: 설정 데이터 관리
+- **RESTful API**: 모듈화된 백엔드 아키텍처
 
-### 1. 저장소 클론
+## 🚀 빠른 시작
+
+### 1️⃣ 저장소 클론
 ```bash
-git clone https://github.com/your-username/timetabling-system.git
+git clone https://github.com/zerocola355ml/timetabling-system.git
 cd timetabling-system
 ```
 
-### 2. 가상환경 생성 및 활성화
+### 2️⃣ 가상환경 설정
 ```bash
+# 가상환경 생성
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 가상환경 활성화
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
 ```
 
-### 3. 의존성 설치
+### 3️⃣ 의존성 설치
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. 애플리케이션 실행
+### 4️⃣ 애플리케이션 실행
 ```bash
 python web_app.py
 ```
 
-### 5. 웹 브라우저에서 접속
+### 5️⃣ 웹 브라우저에서 접속
 ```
 http://localhost:5000
 ```
@@ -73,87 +98,135 @@ http://localhost:5000
 
 ```
 timetabling-system/
-├── web_app.py                 # Flask 웹 애플리케이션
-├── exam_scheduler_app.py      # 메인 스케줄링 로직
-├── scheduler.py               # CP-SAT 솔버 구현
-├── data_loader.py            # 데이터 로딩 및 처리
-├── templates/                # HTML 템플릿
-│   ├── base.html
-│   ├── configure.html
-│   └── schedule_manager.html
-├── static/                   # 정적 파일 (CSS, JS, 이미지)
-├── uploads/                  # 업로드된 데이터 파일 (gitignore)
-└── requirements.txt          # Python 의존성
+├── 🐍 web_app.py                 # Flask 웹 애플리케이션 (메인 진입점)
+├── 🐍 exam_scheduler_app.py      # 스케줄링 애플리케이션 통합 관리
+├── 🐍 scheduler.py               # OR-Tools CP-SAT 솔버 구현
+├── 🐍 data_loader.py            # 데이터 로딩 및 전처리
+├── 🐍 config.py                 # 설정 관리 및 기본값
+├── 📁 templates/                # Jinja2 HTML 템플릿
+│   ├── index.html               # 메인 대시보드
+│   ├── schedule_manager.html    # 시간표 관리 인터페이스
+│   ├── data_review.html         # 데이터 검토 페이지
+│   └── ...                     # 기타 페이지들
+├── 📁 static/                   # 정적 파일 (CSS, JS, 이미지)
+├── 📁 sample_data/              # 익명화된 샘플 데이터
+│   ├── 과목 정보.xlsx           # 과목별 상세 정보
+│   └── 학생배정정보.xlsx        # 학생 수강 정보
+├── 📁 uploads/                  # 사용자 업로드 파일 (gitignore)
+├── 📁 results/                  # 생성된 시간표 결과
+└── 📄 requirements.txt          # Python 패키지 의존성
 ```
 
-## ⚙️ 설정 파일
+## 📊 샘플 데이터 활용
 
-시스템은 다음 JSON 설정 파일들을 통해 동작합니다:
+프로젝트에는 **익명화된 샘플 데이터**가 포함되어 있어 즉시 시스템을 체험할 수 있습니다:
 
-- `custom_exam_info.json`: 시험 일정 및 교시 정보
-- `hard_subjects_config.json`: 어려운 과목 정의
-- `student_burden_config.json`: 학생 부담 제한 설정
-- `subject_constraints.json`: 과목별 제약 조건
-- `subject_conflicts.json`: 과목 충돌 관계
-- `custom_teacher_constraints.json`: 교사 제약 조건
-- `individual_conflicts.json`: 개별 학생 충돌
-- `same_grade_conflicts.json`: 학년별 충돌
+### 📋 포함된 샘플 데이터
+- **`과목 정보.xlsx`**: 과목별 시험 시간, 듣기평가 여부, 담당 교사 등
+- **`학생배정정보.xlsx`**: 학생별 수강 과목 정보 및 충돌 데이터
 
-## 🎯 사용 방법
+### 🎯 샘플 데이터 사용법
+1. 웹 애플리케이션 실행 후 `/data-review` 페이지 접속
+2. `sample_data` 폴더의 파일들을 `uploads` 폴더로 복사
+3. 각 데이터 설정 페이지에서 파일 업로드
+4. `/schedule-manager`에서 자동 시간표 생성 체험
 
-### 1. 데이터 설정
-1. `/configure` 페이지에서 시험 정보 및 제약 조건 설정
-2. Excel 파일 업로드 (학생 배정 정보)
-3. JSON 설정 파일들을 통한 세부 제약 조건 설정
+## ⚙️ 핵심 알고리즘
 
-### 2. 시간표 생성
-1. `/schedule-manager` 페이지에서 자동 생성 또는 수동 배치
-2. 드래그 앤 드롭으로 과목 배치
-3. 실시간 검증 및 추천 시스템 활용
+### 🔧 제약 조건 처리
+```python
+# 주요 제약 조건들
+constraints = {
+    'teacher_conflicts': '교사별 동시 배치 방지',
+    'student_conflicts': '학생별 과목 충돌 방지', 
+    'listening_exams': '듣기평가 동시 배치 방지',
+    'daily_limits': '일일 최대 시험 수 제한',
+    'hard_subjects': '어려운 과목 분산 배치',
+    'fixed_assignments': '수동 배치 보존'
+}
+```
 
-### 3. 결과 확인
-- 생성된 시간표 검증
-- 학생 부담 분석
-- 충돌 및 경고 확인
-
-## 🔧 주요 알고리즘
-
-### 제약 조건 처리
-- **시간 충돌**: 교사, 학생, 과목별 동시 배치 방지
-- **학생 부담**: 일일 최대 시험 수 제한
-- **과목 특성**: 듣기평가, 어려운 과목 등 특수 처리
-- **고정 배치**: 수동 배치된 과목 보존
-
-### 최적화 목표
-- 학생 부담 최소화
-- 교사 스케줄 최적화
-- 제약 조건 만족도 최대화
+### 🎯 최적화 목표
+- **학생 부담 최소화**: 일일 시험 수 균등 분배
+- **교사 스케줄 최적화**: 교사별 불가능 시간 반영
+- **제약 조건 만족도**: 모든 하드 제약 조건 100% 만족
+- **사용자 만족도**: 수동 조정 가능한 유연성 제공
 
 ## 📈 성능 및 확장성
 
-- **처리 속도**: 일반적인 학교 규모(1000명 이하)에서 1-2분 내 생성
-- **확장성**: 모듈화된 구조로 새로운 제약 조건 쉽게 추가
-- **사용자 경험**: 실시간 피드백 및 직관적 인터페이스
+### ⚡ 성능 지표
+- **처리 속도**: 일반적인 학교 규모(1,000명 이하)에서 **1-2분 내** 생성
+- **메모리 효율성**: 대용량 데이터 처리 시 메모리 사용량 최적화
+- **동시성**: 멀티스레딩을 통한 비동기 처리
 
-## 🤝 기여하기
+### 🔄 확장성
+- **모듈화된 구조**: 새로운 제약 조건 쉽게 추가
+- **플러그인 아키텍처**: 기능 확장 시 기존 코드 영향 최소화
+- **설정 기반**: JSON 파일을 통한 유연한 설정 관리
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## 🎨 사용자 경험 (UX)
+
+### 💡 직관적 인터페이스
+- **드래그 앤 드롭**: 복잡한 기술 없이 직관적 조작
+- **실시간 피드백**: 배치 가능성 즉시 확인
+- **시각적 표현**: 색상 코딩을 통한 상태 구분
+- **반응형 디자인**: 모든 디바이스에서 최적화
+
+### 🔍 스마트 검증 시스템
+- **충돌 감지**: 실시간 충돌 검사 및 경고
+- **최적화 추천**: AI 기반 배치 위치 제안
+- **데이터 검증**: 업로드 파일 자동 검증
+
+## 🧪 테스트 및 품질 보증
+
+### ✅ 검증된 기능들
+- **제약 조건 만족도**: 모든 하드 제약 조건 100% 만족 검증
+- **데이터 무결성**: 파일 업로드 및 처리 과정 검증
+- **사용자 인터페이스**: 크로스 브라우저 호환성 테스트
+- **성능 테스트**: 대용량 데이터 처리 성능 검증
+
+## 🤝 기여 가이드
+
+### 📝 개발 환경 설정
+```bash
+# 개발 의존성 설치
+pip install -r requirements-dev.txt
+
+# 코드 스타일 검사
+flake8 .
+
+# 테스트 실행
+python -m pytest tests/
+```
+
+### 🔄 기여 프로세스
+1. **Fork** the Project
+2. **Feature Branch** 생성 (`git checkout -b feature/AmazingFeature`)
+3. **Commit** 변경사항 (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** to Branch (`git push origin feature/AmazingFeature`)
+5. **Pull Request** 생성
 
 ## 📄 라이선스
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
+이 프로젝트는 **MIT 라이선스** 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 
 ## 📞 연락처
 
-프로젝트 링크: [https://github.com/your-username/timetabling-system](https://github.com/your-username/timetabling-system)
+**개발자**: [zerocola355ml](https://github.com/zerocola355ml)  
+**이메일**: sin51611630@gmail.com  
+**프로젝트 링크**: [https://github.com/zerocola355ml/timetabling-system](https://github.com/zerocola355ml/timetabling-system)
 
 ## 🙏 감사의 말
 
-- Google OR-Tools 팀
-- Flask 개발팀
-- Bootstrap 팀
-- 모든 오픈소스 기여자들
+- **Google OR-Tools 팀**: 강력한 최적화 솔버 제공
+- **Flask 개발팀**: 경량 웹 프레임워크
+- **Bootstrap 팀**: 반응형 UI 컴포넌트
+- **모든 오픈소스 기여자들**: 지식 공유와 협업
+
+---
+
+<div align="center">
+
+**💡 이 프로젝트는 제약 조건 프로그래밍과 웹 개발의 융합을 통해 실제 업무 문제를 해결하는 것을 목표로 합니다.**
+
+</div>

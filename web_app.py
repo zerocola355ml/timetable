@@ -154,10 +154,6 @@ def serve_upload(filename):
 
 
 
-@app.route('/configure')
-def configure():
-    """설정 조정 페이지"""
-    return render_template('configure.html')
 
 @app.route('/schedule-manager')
 def schedule_manager():
@@ -201,12 +197,14 @@ def get_data_file(filename):
             else:
                 return jsonify({'error': 'exam_info.json not found'}), 404
         elif filename == 'subject_info.json':
-            if os.path.exists('subject_info.json'):
-                with open('subject_info.json', 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+            try:
+                # data_loader를 사용해서 custom_exam_scope.json에서 과목 정보 로드
+                from data_loader import DataLoader
+                data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
+                data = data_loader.load_subject_info()
                 return jsonify(data)
-            else:
-                return jsonify({'error': 'subject_info.json not found'}), 404
+            except Exception as e:
+                return jsonify({'error': f'Error loading subject info: {str(e)}'}), 500
         else:
             return jsonify({'error': 'File not found'}), 404
     except Exception as e:
@@ -243,8 +241,6 @@ def create_schedule():
         config_data = payload.get('config', {})
         user_time_limit = payload.get('time_limit', 120)
         
-        print(f"DEBUG: Received request with config={config_data}, time_limit={user_time_limit}")
-        print(f"DEBUG: Full payload: {payload}")
         
         # 설정 객체 생성 (일수/교시시간 제한은 /exam-info 데이터 사용)
         with schedule_lock:
@@ -290,14 +286,12 @@ def create_schedule():
         # 고정 배치 설정 (기본값: True, 프론트엔드에서 전달된 값 사용)
         keep_manual = config_data.get('keep_manual_assignments', True)
         app_instance.set_use_fixed_assignments(keep_manual)
-        print(f"DEBUG: Keep manual assignments: {keep_manual}")
         
         # 데이터 로드
         with schedule_lock:
             schedule_status["step"] = "데이터를 로드하고 있습니다..."
             schedule_status["progress"] = 20
             
-        print("DEBUG: Loading data...")
         if not app_instance.load_all_data():
             with schedule_lock:
                 schedule_status["step"] = "데이터 로드 실패"
@@ -308,18 +302,13 @@ def create_schedule():
                 'error': '데이터 로드에 실패했습니다. 파일을 확인해주세요.'
             }), 400
         
-        print("DEBUG: Data loaded successfully")
-        
         # 시험 시간표 생성
         def update_status(step, progress):
             with schedule_lock:
                 schedule_status["step"] = step
                 schedule_status["progress"] = progress
         
-        print(f"DEBUG: Creating schedule with time_limit={user_time_limit}")
         status, result = app_instance.create_schedule(time_limit=int(user_time_limit), status_callback=update_status)
-        
-        print(f"DEBUG: Schedule creation completed with status={status}")
         
         if status == "SUCCESS":
             # 결과 저장
@@ -328,7 +317,6 @@ def create_schedule():
                 schedule_status["progress"] = 90
                 
             app_instance.save_results(result, "results")
-            print("DEBUG: Results saved successfully")
             
             # 완료 상태
             with schedule_lock:
@@ -427,8 +415,6 @@ def create_schedule():
             
             # INFEASIBLE 상태일 때는 diagnosis 변수가 정의되어 있음
             if status == "INFEASIBLE" and 'diagnosis' in locals():
-                print(f"DEBUG: Sending INFEASIBLE response with diagnosis: {diagnosis}")
-                print(f"DEBUG: Original result: {result}")
                 return jsonify({
                     'success': False,
                     'error': error_message,
@@ -436,8 +422,6 @@ def create_schedule():
                     'diagnosis': diagnosis
                 }), 400
             else:
-                print(f"DEBUG: Sending non-INFEASIBLE response")
-                print(f"DEBUG: Original result: {result}")
                 return jsonify({
                     'success': False,
                     'error': error_message,
@@ -461,10 +445,6 @@ def create_schedule():
             'traceback': traceback.format_exc()
         }), 500
 
-@app.route('/results')
-def results():
-    """결과 표시 페이지"""
-    return render_template('results.html')
 
 @app.route('/api/results')
 def get_results():
@@ -525,10 +505,10 @@ def download_file(filename):
             return send_file(file_path, as_attachment=True)
         else:
             flash('파일을 찾을 수 없습니다.', 'error')
-            return redirect(url_for('results'))
+            return redirect(url_for('schedule_manager'))
     except Exception as e:
         flash(f'다운로드 중 오류: {str(e)}', 'error')
-        return redirect(url_for('results'))
+        return redirect(url_for('schedule_manager'))
 
 @app.route('/api/upload-status')
 def upload_status():
@@ -569,110 +549,6 @@ def data_review():
 
 
 
-@app.route('/enrollment-data')
-def enrollment_data():
-    """분반배정표 데이터 시각화 및 편집 페이지"""
-    return render_template('enrollment_data.html')
-
-@app.route('/api/enrollment-data')
-def get_enrollment_data():
-    """분반배정표 데이터 API"""
-    try:
-        data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
-        student_conflict_dict, double_enroll_dict, student_names, enroll_bool = data_loader.load_enrollment_data()
-        
-        # enroll_bool을 JSON 직렬화 가능한 형태로 변환
-        enrollment_matrix = {}
-        for student in enroll_bool.index:
-            enrollment_matrix[student] = {}
-            for subject in enroll_bool.columns:
-                enrollment_matrix[student][subject] = bool(enroll_bool.loc[student, subject])
-        
-        return jsonify({
-            'success': True,
-            'subjects': list(enroll_bool.columns),
-            'students': student_names,
-            'enrollment_matrix': enrollment_matrix,
-            'student_conflict_dict': student_conflict_dict,
-            'double_enroll_dict': double_enroll_dict
-        })
-    except Exception as e:
-        print(f"Error loading enrollment data: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/update-enrollment', methods=['POST'])
-def update_enrollment():
-    """학생배정정보 데이터 업데이트 API (새로운 양식)"""
-    try:
-        data = request.json
-        enrollment_matrix = data.get('enrollment_matrix', {})
-        
-        # 업데이트된 데이터를 임시 파일로 저장
-        import pandas as pd
-        from data_loader import DataLoader
-        
-        # 원본 파일 로드
-        data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
-        student_conflict_dict, double_enroll_dict, student_names, enroll_bool = data_loader.load_enrollment_data()
-        
-        # 업데이트된 수강 정보 적용
-        for student, subjects in enrollment_matrix.items():
-            for subject, is_enrolled in subjects.items():
-                if student in enroll_bool.index and subject in enroll_bool.columns:
-                    enroll_bool.loc[student, subject] = is_enrolled
-        
-        # 업데이트된 파일 저장
-        updated_file_path = os.path.join(UPLOAD_FOLDER, '학생배정정보_updated.xlsx')
-        
-        # Excel 파일로 저장하는 로직 (새로운 양식에 맞춤)
-        with pd.ExcelWriter(updated_file_path, engine='openpyxl') as writer:
-            # 헤더 정보 (1행: A-E열은 빈값, F열부터 과목명)
-            header_data = [[''] * 5 + list(enroll_bool.columns)]
-            header_df = pd.DataFrame(header_data)
-            header_df.to_excel(writer, sheet_name=0, index=False, header=False)
-            
-            # 학생 데이터 (2행부터: 순번, 학년, 반, 번호, 이름, 수강여부)
-            student_data = []
-            for student in enroll_bool.index:
-                # 학생 정보 파싱 (학번 + 이름에서 분리)
-                # 예: "1101김도윤B" -> grade=1, class=1, number=1, name="김도윤B"
-                student_id = student[:4]  # 학번 부분 (4자리)
-                name = student[4:]  # 이름 부분
-                
-                # 학번에서 학년, 반, 번호 추출 (2자리씩)
-                grade = int(student_id[:2])
-                class_num = int(student_id[2:4])
-                number = int(student_id[4:]) if len(student_id) > 4 else 1
-                
-                # 순번은 인덱스 + 1
-                order = len(student_data) + 1
-                
-                # 수강 여부 (1이면 수강, 빈값이면 미수강)
-                enrollment_status = [1 if enroll_bool.loc[student, subject] else '' 
-                                   for subject in enroll_bool.columns]
-                
-                row = [order, grade, class_num, number, name] + enrollment_status
-                student_data.append(row)
-            
-            # 컬럼명 설정
-            columns = ['순번', '학년', '반', '번호', '이름'] + list(enroll_bool.columns)
-            student_df = pd.DataFrame(student_data, columns=columns)
-            student_df.to_excel(writer, sheet_name=0, startrow=1, index=False, header=False)
-        
-        return jsonify({
-            'success': True,
-            'message': '학생배정정보가 업데이트되었습니다.',
-            'updated_file': '학생배정정보_updated.xlsx'
-        })
-    except Exception as e:
-        print(f"Error updating enrollment data: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 @app.route('/conflict-selection')
 def conflict_selection():
@@ -1005,8 +881,8 @@ def get_listening_conflicts():
             }), 404
         
         data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
-        # 커스텀 편집 내용을 반영한 과목 정보 로드
-        subject_info = data_loader.load_custom_subject_info()
+        # 과목 정보 로드
+        subject_info = data_loader.load_subject_info()
         
         # 듣기평가 과목들 추출
         listening_subjects = [subject for subject, info in subject_info.items() if info['듣기평가'] == 1]
@@ -1045,8 +921,8 @@ def get_teacher_conflicts():
             }), 404
         
         data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
-        # 커스텀 편집 내용을 반영한 과목 정보 로드
-        subject_info = data_loader.load_custom_subject_info()
+        # 과목 정보 로드
+        subject_info = data_loader.load_subject_info()
         
         # 교사 충돌 파일에서 데이터 로드
         conflicts = load_teacher_conflicts()
@@ -1213,8 +1089,8 @@ def generate_teacher_conflicts():
             }), 400
         
         data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
-        # 커스텀 편집 내용을 반영한 과목 정보 로드
-        subject_info = data_loader.load_custom_subject_info()
+        # 과목 정보 로드
+        subject_info = data_loader.load_subject_info()
         
         # 교사 충돌 정보 생성
         conflicts = []
@@ -1298,32 +1174,44 @@ def add_teacher_conflict():
 
 @app.route('/api/reset-all-data', methods=['POST'])
 def reset_all_data():
-    """모든 편집된 데이터를 원본 Excel 파일 상태로 초기화"""
+    """uploads 폴더 내 모든 파일을 삭제하여 완전 초기화"""
     try:
-        # 모든 커스텀 충돌 파일들 삭제
-        custom_files = [
-            'custom_student_conflicts.json',
-            'custom_student_removed_conflicts.json', 
-            'custom_listening_conflicts.json',
-            'teacher_conflicts.json',  # 교사 충돌 파일
-            # 향후 추가될 수 있는 다른 편집 파일들
-            # 'custom_enrollment_data.json',
-            'custom_subject_info.json',
-            # 'custom_exam_info.json',
-            # 'custom_teacher_unavailable.json'
-        ]
+        import shutil
+        import os
         
+        uploads_folder = app.config['UPLOAD_FOLDER']
+        
+        # uploads 폴더가 존재하는지 확인
+        if not os.path.exists(uploads_folder):
+            return jsonify({
+                'success': True,
+                'message': 'uploads 폴더가 존재하지 않습니다. 이미 초기화된 상태입니다.',
+                'deleted_files': 0
+            })
+        
+        # uploads 폴더 내 모든 파일과 폴더 삭제
         deleted_count = 0
-        for filename in custom_files:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                deleted_count += 1
+        deleted_files = []
+        
+        try:
+            for filename in os.listdir(uploads_folder):
+                file_path = os.path.join(uploads_folder, filename)
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                    deleted_count += 1
+                    deleted_files.append(filename)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                    deleted_count += 1
+                    deleted_files.append(filename + '/')
+        except Exception as e:
+            print(f"Error deleting files: {e}")
         
         return jsonify({
             'success': True,
-            'message': f'모든 편집된 데이터가 초기화되었습니다. ({deleted_count}개 파일 삭제됨)',
-            'deleted_files': deleted_count
+            'message': f'uploads 폴더가 완전히 초기화되었습니다. ({deleted_count}개 항목 삭제됨)',
+            'deleted_files': deleted_count,
+            'deleted_items': deleted_files
         })
         
     except Exception as e:
@@ -1410,8 +1298,8 @@ def generate_listening_conflicts():
             }), 400
         
         data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
-        # 커스텀 편집 내용을 반영한 과목 정보 로드
-        subject_info = data_loader.load_custom_subject_info()
+        # 과목 정보 로드
+        subject_info = data_loader.load_subject_info()
         
         # 듣기평가 과목들 추출
         listening_subjects = [subject for subject, info in subject_info.items() if info['듣기평가'] == 1]
@@ -1497,33 +1385,6 @@ def reset_teacher_conflicts():
             'error': f'교사 충돌 초기화 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
-@app.route('/api/reset-enrollment-data', methods=['POST'])
-def reset_enrollment_data():
-    """분반배정표 편집을 원본 상태로 초기화"""
-    try:
-        # 분반배정표 관련 편집 파일들 삭제 (현재는 없지만 향후 확장 가능)
-        enrollment_files = [
-            # 향후 분반배정표 편집 기능이 추가되면 여기에 파일명 추가
-        ]
-        
-        deleted_count = 0
-        for filename in enrollment_files:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                deleted_count += 1
-        
-        return jsonify({
-            'success': True,
-            'message': f'분반배정표가 원본 상태로 초기화되었습니다. ({deleted_count}개 파일 삭제됨)',
-            'deleted_files': deleted_count
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'분반배정표 초기화 중 오류가 발생했습니다: {str(e)}'
-        }), 500
 
 @app.route('/exam-scope')
 def exam_scope():
@@ -1534,14 +1395,11 @@ def exam_scope():
 def get_exam_scope_data():
     """과목 정보 데이터를 반환합니다"""
     try:
-        print(f"DEBUG: Loading exam scope data from {app.config['UPLOAD_FOLDER']}")
         data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
         
-        # 원본 과목 정보 데이터 로드
-        print("DEBUG: Loading original subject info...")
+        # 과목 정보 데이터 로드
         try:
-            original_subject_info = data_loader.load_subject_info()
-            print(f"DEBUG: Loaded {len(original_subject_info)} original subjects")
+            subject_info = data_loader.load_subject_info()
         except FileNotFoundError:
             # 파일이 없을 때는 안내 메시지 반환
             return jsonify({
@@ -1550,38 +1408,12 @@ def get_exam_scope_data():
                 'message': '과목 정보 파일이 업로드되지 않았습니다. 파일을 업로드해주세요.'
             }), 404
         
-        # 커스텀 과목 정보 데이터 로드 (있는 경우)
-        print("DEBUG: Loading custom subject info...")
-        custom_subject_info = load_custom_data('custom_subject_info.json', {})
-        print(f"DEBUG: Loaded {len(custom_subject_info)} custom subjects")
-        
-        # 원본과 커스텀 데이터 병합
-        merged_subject_info = {}
-        for subject, info in original_subject_info.items():
-            # 삭제 표시된 과목은 제외
-            if subject in custom_subject_info and custom_subject_info[subject].get('_deleted'):
-                continue
-                
-            merged_subject_info[subject] = info.copy()
-            if subject in custom_subject_info:
-                # 커스텀 데이터로 덮어쓰기 (삭제 표시 제외)
-                custom_info = custom_subject_info[subject]
-                if not custom_info.get('_deleted'):
-                    merged_subject_info[subject].update(custom_info)
-        
-        # 커스텀에서만 있는 과목들 추가 (삭제 표시 제외)
-        for subject, info in custom_subject_info.items():
-            if subject not in original_subject_info and not info.get('_deleted'):
-                merged_subject_info[subject] = info
-        
-        print(f"DEBUG: Final merged data has {len(merged_subject_info)} subjects")
         return jsonify({
             'success': True,
-            'data': merged_subject_info
+            'data': subject_info
         })
         
     except Exception as e:
-        print(f"ERROR in get_exam_scope_data: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -1589,169 +1421,22 @@ def get_exam_scope_data():
             'error': f'과목 정보 데이터 로드 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
-@app.route('/api/update-exam-scope', methods=['POST'])
-def update_exam_scope():
-    """과목 정보 데이터를 업데이트합니다"""
-    try:
-        data = request.get_json()
-        subject = data.get('subject')
-        field = data.get('field')
-        value = data.get('value')
-        
-        if not all([subject, field]):
-            return jsonify({
-                'success': False,
-                'error': '필수 파라미터가 누락되었습니다.'
-            }), 400
-        
-        # 커스텀 과목 정보 데이터 로드
-        custom_data = load_custom_data('custom_subject_info.json', {})
-        
-        # 삭제 표시된 과목은 업데이트 불가
-        if subject in custom_data and custom_data[subject].get('_deleted'):
-            return jsonify({
-                'success': False,
-                'error': f'삭제된 과목 "{subject}"은(는) 수정할 수 없습니다.'
-            }), 400
-        
-        # 해당 과목이 없으면 생성
-        if subject not in custom_data:
-            custom_data[subject] = {}
-        
-        # 필드 업데이트
-        if field == '시간':
-            # 시간은 정수로 변환
-            try:
-                custom_data[subject][field] = int(value) if value else None
-            except ValueError:
-                return jsonify({
-                    'success': False,
-                    'error': '시간은 숫자로 입력해주세요.'
-                }), 400
-        elif field == '듣기평가' or field == '자율감독':
-            # 듣기평가/자율감독은 boolean으로 변환
-            custom_data[subject][field] = value == 'true' or value == True
-        elif field == '담당교사':
-            # 담당교사는 리스트로 변환
-            if isinstance(value, str):
-                custom_data[subject][field] = [teacher.strip() for teacher in value.split(',') if teacher.strip()]
-            elif isinstance(value, list):
-                custom_data[subject][field] = value
-            else:
-                custom_data[subject][field] = []
-        else:
-            custom_data[subject][field] = value
-        
-        # 커스텀 데이터 저장
-        save_custom_data('custom_subject_info.json', custom_data)
-        
-        return jsonify({
-            'success': True,
-            'message': f'{subject}의 {field}이(가) 업데이트되었습니다.'
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'과목 정보 업데이트 중 오류가 발생했습니다: {str(e)}'
-        }), 500
 
 
 
-@app.route('/api/delete-exam-scope-subject', methods=['POST'])
-def delete_exam_scope_subject():
-    """과목 정보에서 과목을 삭제합니다"""
-    try:
-        data = request.get_json()
-        subject_name = data.get('subject_name')
-        
-        if not subject_name:
-            return jsonify({
-                'success': False,
-                'error': '과목명이 필요합니다.'
-            }), 400
-        
-        # 커스텀 과목 정보 데이터 로드
-        custom_data = load_custom_data('custom_subject_info.json', {})
-        
-        # 원본 과목 정보 데이터 로드 (과목 존재 여부 확인용)
-        data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
-        original_subject_info = data_loader.load_subject_info()
-        
-        # 과목이 원본이나 커스텀 데이터에 존재하는지 확인
-        if subject_name not in original_subject_info and subject_name not in custom_data:
-            return jsonify({
-                'success': False,
-                'error': f'과목 "{subject_name}"이(가) 존재하지 않습니다.'
-            }), 400
-        
-        # 과목 삭제 처리
-        if subject_name in custom_data:
-            # 커스텀 데이터에 있는 과목은 완전 삭제
-            del custom_data[subject_name]
-        else:
-            # 원본 과목은 삭제 표시로 처리
-            custom_data[subject_name] = {'_deleted': True}
-        
-        # 커스텀 데이터 저장
-        save_custom_data('custom_subject_info.json', custom_data)
-        
-        # 삭제된 과목과 관련된 같은 학년 충돌 데이터 정리
-        same_grade_conflicts_file = os.path.join(app.config['UPLOAD_FOLDER'], 'same_grade_conflicts.json')
-        same_grade_removed_file = os.path.join(app.config['UPLOAD_FOLDER'], 'same_grade_removed_conflicts.json')
-        
-        # 같은 학년 충돌 데이터에서 삭제된 과목과 관련된 충돌 제거
-        for conflict_file in [same_grade_conflicts_file, same_grade_removed_file]:
-            if os.path.exists(conflict_file):
-                try:
-                    with open(conflict_file, 'r', encoding='utf-8') as f:
-                        conflicts = json.load(f)
-                    
-                    # 삭제된 과목과 관련된 충돌 필터링
-                    filtered_conflicts = []
-                    for conflict in conflicts:
-                        if conflict.get('subject1') != subject_name and conflict.get('subject2') != subject_name:
-                            filtered_conflicts.append(conflict)
-                    
-                    # 필터링된 충돌 데이터 저장
-                    with open(conflict_file, 'w', encoding='utf-8') as f:
-                        json.dump(filtered_conflicts, f, ensure_ascii=False, indent=2)
-                    
-                    removed_count = len(conflicts) - len(filtered_conflicts)
-                    if removed_count > 0:
-                        print(f"{os.path.basename(conflict_file)}에서 {removed_count}개의 관련 충돌이 제거되었습니다.")
-                        
-                except Exception as e:
-                    print(f"충돌 데이터 정리 중 오류: {e}")
-        
-        return jsonify({
-            'success': True,
-            'message': f'과목 "{subject_name}"이(가) 삭제되었습니다. 관련 충돌 데이터도 정리되었습니다.'
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'과목 삭제 중 오류가 발생했습니다: {str(e)}'
-        }), 500
 
 @app.route('/api/reset-exam-scope', methods=['POST'])
 def reset_exam_scope():
-    """과목 정보 편집을 원본 상태로 초기화"""
+    """과목 정보를 초기화"""
     try:
-        # 사용자 편집 내용만 삭제 (원본으로 초기화)
-        exam_scope_files = [
-            'custom_subject_info.json'
-        ]
-        
-        # 같은 학년 충돌 데이터도 초기화 (과목 정보가 변경되었으므로)
+        # 같은 학년 충돌 데이터 초기화
         conflict_files = [
             'same_grade_conflicts.json',
             'same_grade_removed_conflicts.json'
         ]
         
         deleted_count = 0
-        for filename in exam_scope_files + conflict_files:
+        for filename in conflict_files:
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             if os.path.exists(file_path):
                 os.remove(file_path)
@@ -1759,23 +1444,22 @@ def reset_exam_scope():
         
         return jsonify({
             'success': True,
-            'message': f'과목 정보가 원본 상태로 초기화되었습니다. 충돌 데이터도 초기화되었습니다. ({deleted_count}개 파일 삭제됨)',
+            'message': f'충돌 데이터가 초기화되었습니다. ({deleted_count}개 파일 삭제됨)',
             'deleted_files': deleted_count
         })
         
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': f'과목 정보 완전 초기화 중 오류가 발생했습니다: {str(e)}'
+            'error': f'초기화 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
 @app.route('/api/complete-reset-exam-scope', methods=['POST'])
 def complete_reset_exam_scope():
-    """과목 정보를 완전히 초기화 - 모든 파일과 편집 내용 삭제"""
+    """과목 정보를 완전히 초기화"""
     try:
         # 삭제할 파일들 목록
         files_to_delete = [
-            'custom_subject_info.json',  # 사용자 편집 내용
             'custom_exam_scope.json',    # 업로드된 엑셀의 JSON 표현
             '과목 정보.xlsx',            # 원본 업로드 파일
             'same_grade_conflicts.json', # 같은 학년 충돌 데이터
@@ -1935,9 +1619,9 @@ def exam_info():
             with open(custom_file_path, 'w', encoding='utf-8') as f:
                 json.dump(default_data, f, ensure_ascii=False, indent=2)
             
-            print(f"DEBUG: Created default custom_exam_info.json at {custom_file_path}")
+            pass
     except Exception as e:
-        print(f"DEBUG: Error creating default custom_exam_info.json: {e}")
+        pass
     
     return render_template('exam_info.html')
 
@@ -1966,8 +1650,6 @@ def update_exam_info():
         field = data.get('field')
         value = data.get('value')
         
-        # 디버깅 로그 추가
-        print(f"DEBUG: Received field='{field}', value={value}, value type={type(value)}")
         
         if not field:
             return jsonify({
@@ -1989,7 +1671,6 @@ def update_exam_info():
             
             # null 값이면 해당 필드를 완전히 삭제
             if value is None:
-                print(f"DEBUG: Deleting field '{parts[-1]}' from nested path")
                 if parts[-1] in current:
                     del current[parts[-1]]
             else:
@@ -1997,7 +1678,6 @@ def update_exam_info():
         else:
             # null 값이면 해당 필드를 완전히 삭제
             if value is None:
-                print(f"DEBUG: Deleting field '{field}' from root")
                 if field in custom_data:
                     del custom_data[field]
             else:
@@ -2204,24 +1884,7 @@ def get_student_burden_config():
             }), 404
         
         data_loader = DataLoader(app.config['UPLOAD_FOLDER'])
-        original_subject_info = data_loader.load_subject_info()
-        custom_subject_info = load_custom_data('custom_subject_info.json', {})
-        
-        # 원본과 커스텀 데이터 병합
-        merged_subject_info = {}
-        for subject, info in original_subject_info.items():
-            if subject in custom_subject_info and custom_subject_info[subject].get('_deleted'):
-                continue
-            merged_subject_info[subject] = info.copy()
-            if subject in custom_subject_info:
-                custom_info = custom_subject_info[subject]
-                if not custom_info.get('_deleted'):
-                    merged_subject_info[subject].update(custom_info)
-        
-        # 커스텀에서만 있는 과목들 추가
-        for subject, info in custom_subject_info.items():
-            if subject not in original_subject_info and not info.get('_deleted'):
-                merged_subject_info[subject] = info
+        merged_subject_info = data_loader.load_subject_info()
         
         # 과목별 어려운 과목 여부 설정
         for subject in merged_subject_info:
@@ -2736,7 +2399,7 @@ def generate_same_grade_conflicts():
             'error': f'충돌 정보 생성 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
-# 분반배정표 파일 업로드 관련 API
+
 @app.route('/api/upload-enrollment-file', methods=['POST'])
 def upload_enrollment_file():
     """분반배정표 파일 업로드 및 학생 충돌 정보 업데이트"""
@@ -2819,8 +2482,8 @@ def upload_enrollment_file():
                         'missing_subjects': list(missing_subjects)
                     }), 400
         except Exception as e:
-            print(f"Warning: 과목 검증 중 오류 발생: {e}")
             # 검증 실패해도 계속 진행
+            pass
         
         # 학생 충돌 정보 생성
         conflicts = data_loader.generate_student_conflicts(enroll_bool)
@@ -2830,9 +2493,8 @@ def upload_enrollment_file():
         if os.path.exists(same_grade_conflicts_path):
             try:
                 os.remove(same_grade_conflicts_path)
-                print(f"same_grade_conflicts.json 파일이 삭제되었습니다.")
             except Exception as e:
-                print(f"same_grade_conflicts.json 파일 삭제 중 오류: {e}")
+                pass
         
         # 기존 커스텀 충돌 데이터와 병합
         custom_conflicts = load_custom_conflicts('individual')
@@ -2855,7 +2517,6 @@ def upload_enrollment_file():
                 # custom_exam_scope.json이 없으면 모든 과목 대상
                 exam_subjects = set(enroll_bool.columns)
         except Exception as e:
-            print(f"custom_exam_scope.json 로드 중 오류: {e}")
             # 오류 시 모든 과목 대상
             exam_subjects = set(enroll_bool.columns)
         
@@ -2873,9 +2534,8 @@ def upload_enrollment_file():
         try:
             with open(stats_file_path, 'w', encoding='utf-8') as f:
                 json.dump(subject_stats, f, ensure_ascii=False, indent=2)
-            print(f"subject_stats.json 파일이 생성되었습니다.")
         except Exception as e:
-            print(f"subject_stats.json 파일 생성 중 오류: {e}")
+            pass
         
         return jsonify({
             'success': True,
@@ -2884,55 +2544,11 @@ def upload_enrollment_file():
         })
         
     except Exception as e:
-        print(f"Error uploading enrollment file: {e}")
+        import traceback
         traceback.print_exc()
         return jsonify({
             'success': False,
             'error': f'파일 업로드 중 오류가 발생했습니다: {str(e)}'
-        }), 500
-
-@app.route('/api/download-enrollment-template')
-def download_enrollment_template():
-    """분반배정표 양식 파일 다운로드"""
-    try:
-        # 간단한 양식 파일 생성 (pandas 사용)
-        import pandas as pd
-        
-        # 새 양식에 맞는 샘플 데이터 생성
-        # A열: 순번, B열: 학년, C열: 반, D열: 번호, E열: 이름, F열부터: 과목
-        sample_data = {
-            '순번': [1, 2, 3, 4, 5, 6],
-            '학년': ['1', '1', '1', '2', '2', '2'],
-            '반': ['1', '1', '1', '1', '1', '1'],
-            '번호': ['1', '2', '3', '1', '2', '3'],
-            '이름': ['홍길동', '김철수', '이영희', '박민수', '정수진', '최지영'],
-            '수학': ['1', '2', '', '', '1', '1'],
-            '영어': ['', '', '', '1', '3', '2'],
-            '국어': ['2', '', '1', '', '4', '1'],
-            '과학': ['', '1', '', '3', '', '2'],
-            '사회': ['2', '', '4', '1', '', '']
-        }
-        
-        df = pd.DataFrame(sample_data)
-        
-        # 임시 파일 생성
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-        df.to_excel(temp_file.name, index=False, engine='openpyxl')
-        temp_file.close()
-        
-        # 파일 전송
-        return send_file(
-            temp_file.name,
-            as_attachment=True,
-            download_name='학생배정정보.xlsx',
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        
-    except Exception as e:
-        print(f"Error creating enrollment template: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'양식 파일 생성 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
 @app.route('/api/upload-exam-scope-file', methods=['POST'])
@@ -3072,36 +2688,6 @@ def calculateEndTime(start_time, duration_minutes):
     except:
         return '00:00'
 
-@app.route('/admin-config')
-def admin_config():
-    """시스템 설정 관리 페이지"""
-    return render_template('admin_config.html')
-
-@app.route('/api/system-config')
-def get_system_config():
-    """시스템 기본 설정을 반환합니다"""
-    try:
-        # 커스텀 시스템 설정 파일 경로
-        config_file = os.path.join(app.config['UPLOAD_FOLDER'], 'system_config.json')
-        
-        # 커스텀 설정이 있으면 사용, 없으면 기본값 사용
-        if os.path.exists(config_file):
-            with open(config_file, 'r', encoding='utf-8') as f:
-                custom_config = json.load(f)
-                config_data = custom_config
-        else:
-            config_data = DEFAULT_SYSTEM_CONFIG.to_dict()
-        
-        return jsonify({
-            'success': True,
-            'data': config_data
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'시스템 설정 데이터 로드 중 오류가 발생했습니다: {str(e)}'
-        }), 500
 
 @app.route('/subject-constraints')
 def subject_constraints():
@@ -3113,44 +2699,6 @@ def subject_conflicts():
     """과목 충돌 설정 페이지"""
     return render_template('subject_conflicts.html')
 
-@app.route('/api/update-system-config', methods=['POST'])
-def update_system_config():
-    """시스템 기본 설정을 업데이트합니다"""
-    try:
-        data = request.get_json()
-        
-        # 설정 파일 경로
-        config_file = os.path.join(app.config['UPLOAD_FOLDER'], 'system_config.json')
-        
-        # 기존 설정 로드
-        if os.path.exists(config_file):
-            with open(config_file, 'r', encoding='utf-8') as f:
-                current_config = json.load(f)
-        else:
-            current_config = DEFAULT_SYSTEM_CONFIG.to_dict()
-        
-        # 설정 업데이트 (빈 객체인 경우 기본값 사용)
-        if not data:
-            current_config = DEFAULT_EXAM_INFO_CONFIG.to_dict()
-        else:
-            for key, value in data.items():
-                if key in current_config:
-                    current_config[key] = value
-        
-        # 설정 저장
-        with open(config_file, 'w', encoding='utf-8') as f:
-            json.dump(current_config, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({
-            'success': True,
-            'message': '시스템 설정이 업데이트되었습니다.'
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'시스템 설정 업데이트 중 오류가 발생했습니다: {str(e)}'
-        }), 500
 
 @app.route('/api/subject-constraints-data')
 def get_subject_constraints_data():
@@ -3577,9 +3125,6 @@ def get_all_data_json():
         except FileNotFoundError:
             subject_info = {}
         
-        # 커스텀 과목 정보 데이터
-        custom_subject_info = load_custom_data('custom_subject_info.json', {})
-        
         # 과목 충돌 데이터
         subject_conflicts = load_custom_data('subject_conflicts.json', {})
         
@@ -3604,7 +3149,6 @@ def get_all_data_json():
         all_data = {
             'teacher_conflicts': teacher_conflicts,
             'subject_info': subject_info,
-            'custom_subject_info': custom_subject_info,
             'subject_conflicts': subject_conflicts,
             'subject_constraints': subject_constraints,
             'teacher_constraints': teacher_constraints,

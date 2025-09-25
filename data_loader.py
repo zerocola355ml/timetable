@@ -133,36 +133,56 @@ class DataLoader:
             return student_conflict_dict, double_enroll_dict, student_names, enroll_bool
         
         except Exception as e:
-            print(f"Error loading enrollment data: {e}")
             import traceback
             traceback.print_exc()
             return None, None, None, None
     
-    def load_subject_info(self, file_path: Union[str, Path] = "과목 정보.xlsx") -> Dict[str, Dict[str, Any]]:
+    def load_subject_info(self, file_path: Union[str, Path] = "custom_exam_scope.json") -> Dict[str, Dict[str, Any]]:
         """
         과목 정보 파일에서 과목 정보를 로드합니다.
+        JSON 파일 또는 Excel 파일에서 과목 정보를 읽어옵니다.
         
         Returns:
             Dict[str, Dict[str, Any]]: 과목별 정보 딕셔너리
         """
         try:
             file_path = self.data_dir / str(file_path)
-            print(f"DEBUG: Loading subject info from {file_path}")
             
             if not file_path.exists():
-                print(f"ERROR: File {file_path} does not exist")
                 raise FileNotFoundError(f"과목 정보 파일을 찾을 수 없습니다: {file_path}")
             
+            # 파일 확장자에 따라 처리 방식 결정
+            file_extension = file_path.suffix.lower()
+            
+            if file_extension == '.json':
+                # JSON 파일 읽기
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    subject_info_dict = json.load(f)
+                
+                return subject_info_dict
+                
+            elif file_extension in ['.xlsx', '.xls']:
+                # Excel 파일 읽기
+                return self._load_subject_info_from_excel(file_path)
+                
+            else:
+                raise ValueError(f"지원되지 않는 파일 형식입니다: {file_extension}")
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise
+    
+    def _load_subject_info_from_excel(self, file_path: Path) -> Dict[str, Dict[str, Any]]:
+        """Excel 파일에서 과목 정보를 로드합니다."""
+        try:
             sheet = 0  # 첫 시트
             
             # 데이터 읽기 (A열 2행부터)
-            print("DEBUG: Reading Excel file...")
             df = pd.read_excel(file_path, sheet_name=sheet, header=None)
-            print(f"DEBUG: Excel file loaded, shape: {df.shape}")
             
             # 과목명 추출 (A열 2행부터)
             subject_names = df.iloc[1:, 0].dropna().astype(str).tolist()
-            print(f"DEBUG: Found {len(subject_names)} subjects: {subject_names[:5]}...")
             
             # 과목 정보 딕셔너리
             subject_info_dict = {}
@@ -232,41 +252,21 @@ class DataLoader:
             return subject_info_dict
             
         except Exception as e:
-            print(f"ERROR in load_subject_info: {str(e)}")
+            print(f"ERROR in _load_subject_info_from_excel: {str(e)}")
             import traceback
             traceback.print_exc()
             raise
 
     def load_custom_subject_info(self) -> Dict[str, Dict[str, Any]]:
         """
-        커스텀 과목 정보를 로드하고 원본과 병합합니다.
+        과목 정보를 로드합니다.
+        custom_exam_scope.json에서 직접 과목 정보를 가져옵니다.
         
         Returns:
-            Dict[str, Dict[str, Any]]: 병합된 과목별 정보 딕셔너리
+            Dict[str, Dict[str, Any]]: 과목별 정보 딕셔너리
         """
-        # 원본 과목 정보 로드
-        original_subject_info = self.load_subject_info()
-        
-        # 커스텀 과목 정보 로드
-        custom_subject_info = self._load_json_file('custom_subject_info.json', {})
-        
-        # 원본과 커스텀 데이터 병합 (_deleted 표시된 항목은 제외)
-        merged_subject_info = {}
-        for subject, info in original_subject_info.items():
-            # 커스텀에서 삭제 표시된 과목은 제외
-            if subject in custom_subject_info and custom_subject_info[subject].get('_deleted'):
-                continue
-            merged_subject_info[subject] = info.copy()
-            if subject in custom_subject_info and not custom_subject_info[subject].get('_deleted'):
-                # 커스텀 데이터로 덮어쓰기
-                merged_subject_info[subject].update(custom_subject_info[subject])
-        
-        # 커스텀에서만 있는 과목들 추가 (삭제 표시 제외)
-        for subject, info in custom_subject_info.items():
-            if subject not in original_subject_info and not info.get('_deleted'):
-                merged_subject_info[subject] = info
-        
-        return merged_subject_info
+        # custom_exam_scope.json에서 직접 과목 정보 로드
+        return self.load_subject_info()
     
 
         

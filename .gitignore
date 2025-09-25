@@ -194,11 +194,8 @@ cython_debug/
 .cursorindexingignore
 
 # Project specific
-uploads/
-results/
 *.xlsx
 *.xls
-manual_schedule.json
 *.log
 logs/
 temp/
