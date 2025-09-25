@@ -229,6 +229,56 @@ def get_schedule_status():
     with schedule_lock:
         return jsonify(schedule_status.copy())
 
+@app.route('/api/debug-config', methods=['GET'])
+def get_debug_config():
+    """디버깅 설정을 반환하는 API"""
+    from logger_config import is_debug_enabled
+    
+    debug_enabled = is_debug_enabled()
+    
+    config = {
+        'enabled': debug_enabled,
+        'level': 'debug' if debug_enabled else 'info',
+        'showTimestamp': True,
+        'showModule': True
+    }
+    
+    logger.debug(f"디버깅 설정 반환: {config}")
+    return jsonify(config)
+
+@app.route('/api/debug-config', methods=['POST'])
+def set_debug_config():
+    """디버깅 설정을 변경하는 API (개발용)"""
+    try:
+        data = request.get_json()
+        enabled = data.get('enabled', False)
+        level = data.get('level', 'info')
+        
+        # 환경변수 업데이트
+        os.environ['TIMETABLING_LOG_LEVEL'] = level.upper()
+        
+        # 로깅 시스템 재초기화
+        from logger_config import setup_logging
+        setup_logging()
+        
+        logger.info(f"디버깅 설정 변경: enabled={enabled}, level={level}")
+        
+        return jsonify({
+            'success': True,
+            'message': '디버깅 설정이 변경되었습니다',
+            'config': {
+                'enabled': enabled,
+                'level': level
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"디버깅 설정 변경 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'설정 변경 실패: {str(e)}'
+        }), 500
+
 @app.route('/api/schedule', methods=['POST'])
 def create_schedule():
     """시험 시간표 생성 API"""

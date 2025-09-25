@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 과목 정보 파일이 없으면 테이블 숨기기
     if (showUploadMessage) {
-        console.log('과목 정보 파일이 없어 데이터 로드를 건너뜁니다.');
+        debugInfo('과목 정보 파일이 없어 데이터 로드를 건너뜁니다.');
         document.getElementById('dataTable').style.display = 'none';
         return;
     }
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function loadConflictData() {
     // 과목 정보 파일이 없으면 데이터 로드 시도하지 않음
     if (showUploadMessage) {
-        console.log('과목 정보 파일이 없어 데이터 로드를 건너뜁니다.');
+        debugInfo('과목 정보 파일이 없어 데이터 로드를 건너뜁니다.');
         return;
     }
     
@@ -311,7 +311,7 @@ function displayConflicts() {
 function generateSameGradeConflicts() {
     // 과목 정보 파일이 없으면 생성 시도하지 않음
     if (showUploadMessage) {
-        console.log('과목 정보 파일이 없어 충돌 정보 생성을 건너뜁니다.');
+        debugInfo('과목 정보 파일이 없어 충돌 정보 생성을 건너뜁니다.');
         return;
     }
     

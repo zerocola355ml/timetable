@@ -1242,7 +1242,7 @@ function handleTeacherKeyboardNavigation(e) {
     const allItems = document.querySelectorAll('#teacherDropdownList .dropdown-item-custom:not(.no-results)');
     const visibleItems = Array.from(allItems).filter(item => item.style.display !== 'none');
     
-    console.log('Key pressed:', e.key, 'Visible items found:', visibleItems.length); // 디버깅용
+    debugInfo('Key pressed:', e.key, 'Visible items found:', visibleItems.length); // 디버깅용
     
     if (visibleItems.length === 0) return;
     
@@ -1250,13 +1250,13 @@ function handleTeacherKeyboardNavigation(e) {
         case 'ArrowDown':
             e.preventDefault();
             currentHighlightedTeacherIndex = Math.min(currentHighlightedTeacherIndex + 1, visibleItems.length - 1);
-            console.log('ArrowDown - Index:', currentHighlightedTeacherIndex); // 디버깅용
+            debugInfo('ArrowDown - Index:', currentHighlightedTeacherIndex); // 디버깅용
             updateTeacherHighlight(visibleItems);
             break;
         case 'ArrowUp':
             e.preventDefault();
             currentHighlightedTeacherIndex = Math.max(currentHighlightedTeacherIndex - 1, 0);
-            console.log('ArrowUp - Index:', currentHighlightedTeacherIndex); // 디버깅용
+            debugInfo('ArrowUp - Index:', currentHighlightedTeacherIndex); // 디버깅용
             updateTeacherHighlight(visibleItems);
             break;
         case 'Enter':
@@ -1264,7 +1264,7 @@ function handleTeacherKeyboardNavigation(e) {
             if (currentHighlightedTeacherIndex >= 0 && currentHighlightedTeacherIndex < visibleItems.length) {
                 const selectedItem = visibleItems[currentHighlightedTeacherIndex];
                 const teacherName = selectedItem.querySelector('span').textContent;
-                console.log('Enter - Selected teacher:', teacherName); // 디버깅용
+                debugInfo('Enter - Selected teacher:', teacherName); // 디버깅용
                 toggleTeacherSelection(teacherName);
                 updateCheckboxState(teacherName);
                 // 선택 후 포커스 유지하고 검색창 클리어
@@ -1294,7 +1294,7 @@ function updateTeacherHighlight(items) {
     if (currentHighlightedTeacherIndex >= 0 && currentHighlightedTeacherIndex < items.length) {
         const item = items[currentHighlightedTeacherIndex];
         item.classList.add('highlighted');
-        console.log('Highlighted item:', item, 'Classes:', item.className); // 디버깅용
+        debugInfo('Highlighted item:', item, 'Classes:', item.className); // 디버깅용
         item.scrollIntoView({ block: 'nearest' });
     }
 }

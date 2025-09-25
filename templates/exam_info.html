@@ -1098,10 +1098,10 @@
 
                 const data = await response.json();
                 
-                console.log(`Server response for Day ${day}, Period ${period}, Field ${field}:`, data);
+                debugInfo(`Server response for Day ${day}, Period ${period}, Field ${field}:`, data);
                 
                 if (data.success) {
-                     console.log(`Server response:`, data);
+                     debugInfo(`Server response:`, data);
                      
                      // 로컬 데이터 업데이트
                      if (!examInfoData.date_periods) {
@@ -1120,7 +1120,7 @@
                          examInfoData.date_periods[day][period][field] = value;
                      }
                      
-                     console.log(`Updated local data for Day ${day}, Period ${period}:`, examInfoData.date_periods[day][period]);
+                     debugInfo(`Updated local data for Day ${day}, Period ${period}:`, examInfoData.date_periods[day][period]);
                     
                                                              // 종료 시간 자동 계산
                     if (field === 'start_time' || field === 'duration') {
@@ -1128,7 +1128,7 @@
                                                   const duration = parseInt(examInfoData.date_periods[day][period].duration || (window.examConfig ? window.examConfig.default_duration : 50));
                         const endTime = calculateEndTime(startTime, duration);
                         
-                        console.log(`Updating end_time for Day ${day}, Period ${period}: ${startTime} + ${duration}min = ${endTime}`);
+                        debugInfo(`Updating end_time for Day ${day}, Period ${period}: ${startTime} + ${duration}min = ${endTime}`);
                         
                         // 종료 시간 업데이트 (재귀 호출 방지)
                         if (!examInfoData.date_periods[day][period].end_time || 
@@ -1149,7 +1149,7 @@
                                 });
                                 
                                 if (endTimeResponse.ok) {
-                                    console.log(`End time successfully saved to server: ${endTime}`);
+                                    debugInfo(`End time successfully saved to server: ${endTime}`);
                                 } else {
                                     console.error('Failed to save end time to server');
                                 }
@@ -1454,7 +1454,7 @@
                 if (data.success) {
                     // 로컬 데이터 업데이트
                                          examInfoData[field] = value;
-                     console.log(`Updated ${field}: ${value}`);
+                     debugInfo(`Updated ${field}: ${value}`);
                  } else {
                      showInlineAlert('오류', data.error, 'error');
                  }

@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadData() {
     // 과목 정보 파일이 없으면 데이터 로드 시도하지 않음
     if (showUploadMessage) {
-        console.log('과목 정보 파일이 없어 데이터 로드를 건너뜁니다.');
+        debugInfo('과목 정보 파일이 없어 데이터 로드를 건너뜁니다.');
         return;
     }
     

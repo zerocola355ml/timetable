@@ -1247,39 +1247,39 @@ async function initializeScheduleManager() {
         await loadExamInfo();
         await loadSubjectInfo();
         
-        console.log('데이터 로드 완료, UI 렌더링 시작...');
+        debugInfo('데이터 로드 완료, UI 렌더링 시작...');
         
         // UI 렌더링
         try {
             renderSubjectList();
-            console.log('과목 목록 렌더링 완료');
+            debugInfo('과목 목록 렌더링 완료');
             
             renderScheduleGrid();
-            console.log('시간표 그리드 렌더링 완료');
+            debugInfo('시간표 그리드 렌더링 완료');
             
             updateStatistics();
-            console.log('통계 업데이트 완료');
+            debugInfo('통계 업데이트 완료');
         } catch (renderError) {
-            console.error('UI 렌더링 오류:', renderError);
+            debugError('UI 렌더링 오류:', renderError);
             throw renderError;
         }
         
-        console.log('시간표 관리자 초기화 완료');
+        debugInfo('시간표 관리자 초기화 완료');
         
         // 학생 부담 분석 패널 초기화
         initializeBurdenPanelToggle();
         
         // 학생 부담 설정이 있거나 설정이 없어도 분석은 실행 (단순 카운트만)
-        console.log('학생 부담 분석 초기화 시작...');
-        console.log('window.studentBurdenConfig:', window.studentBurdenConfig);
-        console.log('constraintData:', constraintData);
+        debugInfo('학생 부담 분석 초기화 시작...');
+        debugInfo('window.studentBurdenConfig:', window.studentBurdenConfig);
+        debugInfo('constraintData:', constraintData);
         
         // 패널이 접혀있는지 확인
         const panelBody = document.getElementById('burdenPanelBody');
-        console.log('패널 상태:', panelBody ? '존재함' : '없음');
+        debugInfo('패널 상태:', panelBody ? '존재함' : '없음');
         if (panelBody) {
-            console.log('패널 클래스:', panelBody.className);
-            console.log('패널이 접혀있는가?', panelBody.classList.contains('collapsed'));
+            debugInfo('패널 클래스:', panelBody.className);
+            debugInfo('패널이 접혀있는가?', panelBody.classList.contains('collapsed'));
         }
         
         renderStudentBurdenAnalysis();
@@ -1288,33 +1288,33 @@ async function initializeScheduleManager() {
         setTimeout(() => {
             const panel = document.getElementById('studentBurdenPanel');
             const panelBody = document.getElementById('burdenPanelBody');
-            console.log('=== 패널 최종 상태 확인 ===');
-            console.log('패널 존재:', panel ? '있음' : '없음');
-            console.log('패널 display:', panel ? panel.style.display : 'N/A');
-            console.log('패널 높이:', panel ? panel.offsetHeight : 'N/A');
-            console.log('패널 바디 존재:', panelBody ? '있음' : '없음');
-            console.log('패널 바디 클래스:', panelBody ? panelBody.className : 'N/A');
-            console.log('패널 바디 display:', panelBody ? panelBody.style.display : 'N/A');
-            console.log('패널 바디 높이:', panelBody ? panelBody.offsetHeight : 'N/A');
+            debugInfo('=== 패널 최종 상태 확인 ===');
+            debugInfo('패널 존재:', panel ? '있음' : '없음');
+            debugInfo('패널 display:', panel ? panel.style.display : 'N/A');
+            debugInfo('패널 높이:', panel ? panel.offsetHeight : 'N/A');
+            debugInfo('패널 바디 존재:', panelBody ? '있음' : '없음');
+            debugInfo('패널 바디 클래스:', panelBody ? panelBody.className : 'N/A');
+            debugInfo('패널 바디 display:', panelBody ? panelBody.style.display : 'N/A');
+            debugInfo('패널 바디 높이:', panelBody ? panelBody.offsetHeight : 'N/A');
             
             // 테이블들도 확인
             const generalTable = document.getElementById('generalBurdenTable');
             const hardTable = document.getElementById('hardBurdenTable');
-            console.log('일반 테이블 높이:', generalTable ? generalTable.offsetHeight : 'N/A');
-            console.log('어려운 테이블 높이:', hardTable ? hardTable.offsetHeight : 'N/A');
+            debugInfo('일반 테이블 높이:', generalTable ? generalTable.offsetHeight : 'N/A');
+            debugInfo('어려운 테이블 높이:', hardTable ? hardTable.offsetHeight : 'N/A');
             
             // 패널 위치 정보 확인
             if (panel) {
                 const rect = panel.getBoundingClientRect();
-                console.log('패널 위치 정보:');
-                console.log('  top:', rect.top, 'left:', rect.left);
-                console.log('  width:', rect.width, 'height:', rect.height);
-                console.log('  화면에 보이는가?', rect.top >= 0 && rect.top <= window.innerHeight);
-                console.log('  현재 스크롤 위치:', window.pageYOffset);
-                console.log('  패널까지 스크롤 필요:', rect.top + window.pageYOffset);
+                debugInfo('패널 위치 정보:');
+                debugInfo('  top:', rect.top, 'left:', rect.left);
+                debugInfo('  width:', rect.width, 'height:', rect.height);
+                debugInfo('  화면에 보이는가?', rect.top >= 0 && rect.top <= window.innerHeight);
+                debugInfo('  현재 스크롤 위치:', window.pageYOffset);
+                debugInfo('  패널까지 스크롤 필요:', rect.top + window.pageYOffset);
                 
                 // 자동 스크롤 제거 - 사용자가 원하는 위치에 스크롤을 유지
-                console.log('패널 위치 확인 완료 (자동 스크롤 비활성화)');
+                debugInfo('패널 위치 확인 완료 (자동 스크롤 비활성화)');
             }
         }, 100);
         
@@ -1333,9 +1333,9 @@ async function initializeScheduleManager() {
 // 시험 정보 로드
 async function loadExamInfo() {
     try {
-        console.log('시험 정보 로드 시작...');
+        debugInfo('시험 정보 로드 시작...');
         const response = await fetch('/api/data/exam_info.json');
-        console.log('시험 정보 API 응답:', response.status, response.statusText);
+        debugInfo('시험 정보 API 응답:', response.status, response.statusText);
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -1344,7 +1344,7 @@ async function loadExamInfo() {
         }
         
         examInfo = await response.json();
-        console.log('시험 정보 로드 완료:', examInfo);
+        debugInfo('시험 정보 로드 완료:', examInfo);
     } catch (error) {
         console.error('시험 정보 로드 오류:', error);
         // 기본값 설정
@@ -1362,16 +1362,16 @@ async function loadExamInfo() {
                 "제3일3교시": {"시작": "11:50:00", "종료": "13:30:00", "진행시간": 100}
             }
         };
-        console.log('기본 시험 정보 사용:', examInfo);
+        debugInfo('기본 시험 정보 사용:', examInfo);
     }
 }
 
 // 과목 정보 로드
 async function loadSubjectInfo() {
     try {
-        console.log('과목 정보 로드 시작...');
+        debugInfo('과목 정보 로드 시작...');
         const response = await fetch('/api/data/subject_info.json');
-        console.log('과목 정보 API 응답:', response.status, response.statusText);
+        debugInfo('과목 정보 API 응답:', response.status, response.statusText);
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -1380,7 +1380,7 @@ async function loadSubjectInfo() {
         }
         
         subjectInfo = await response.json();
-        console.log('과목 정보 로드 완료:', Object.keys(subjectInfo).length + '개 과목');
+        debugInfo('과목 정보 로드 완료:', Object.keys(subjectInfo).length + '개 과목');
     } catch (error) {
         console.error('과목 정보 로드 오류:', error);
         // 기본값 설정
@@ -1391,7 +1391,7 @@ async function loadSubjectInfo() {
             "과학": {"시간": 80, "학년": "1", "담당교사": ["최교사"], "듣기평가": false},
             "사회": {"시간": 50, "학년": "1", "담당교사": ["정교사"], "듣기평가": false}
         };
-        console.log('기본 과목 정보 사용:', Object.keys(subjectInfo).length + '개 과목');
+        debugInfo('기본 과목 정보 사용:', Object.keys(subjectInfo).length + '개 과목');
     }
 }
 
@@ -1501,7 +1501,7 @@ function renderScheduleGrid() {
         Array.from(allAvailablePeriods).sort((a, b) => a - b) : 
         [];
     
-    console.log('전체 렌더링 교시들:', periodsToRender);
+    debugInfo('전체 렌더링 교시들:', periodsToRender);
     
     // 교시 데이터가 없는 경우 경고
     if (periodsToRender.length === 0) {
@@ -1530,7 +1530,7 @@ function renderScheduleGrid() {
         }
     });
     
-    console.log('날짜별 사용가능 교시:', dateToAvailablePeriods);
+    debugInfo('날짜별 사용가능 교시:', dateToAvailablePeriods);
     
     // 교시 행 생성 (날짜별 개별 교시 처리)
     tbody.innerHTML = '';
@@ -1598,7 +1598,7 @@ function getTimeSlotInfo(slotId) {
             const startTime = periodData.start_time;
             const endTime = periodData.end_time;
             
-            console.log(`슬롯 ${slotId}: ${startTime} - ${endTime} (${duration}분) [JSON에서 직접 로드]`);
+            debugInfo(`슬롯 ${slotId}: ${startTime} - ${endTime} (${duration}분) [JSON에서 직접 로드]`);
             
             return {
                 start: startTime,
@@ -1611,7 +1611,7 @@ function getTimeSlotInfo(slotId) {
     // fallback: 시험타임에서 찾기 (기존 방식)
     const timeData = examInfo.시험타임 && examInfo.시험타임[slotId];
     if (timeData && timeData.시작 && timeData.종료) {
-        console.log(`슬롯 ${slotId}: ${timeData.시작} - ${timeData.종료} (${timeData.진행시간}분) [시험타임에서 로드]`);
+        debugInfo(`슬롯 ${slotId}: ${timeData.시작} - ${timeData.종료} (${timeData.진행시간}분) [시험타임에서 로드]`);
         
         return {
             start: timeData.시작.slice(0, 5), // HH:MM 형식
@@ -1670,7 +1670,7 @@ function isSubjectAssigned(subjectName) {
 
 // 슬롯에서 과목 제거
 function removeSubjectFromSlot(subjectName, slotId) {
-    console.log('과목 제거 시작:', subjectName, 'from', slotId);
+    debugInfo('과목 제거 시작:', subjectName, 'from', slotId);
     
     if (scheduleData[slotId] && Array.isArray(scheduleData[slotId])) {
         scheduleData[slotId] = scheduleData[slotId].filter(subject => subject !== subjectName);
@@ -1680,7 +1680,7 @@ function removeSubjectFromSlot(subjectName, slotId) {
             delete scheduleData[slotId];
         }
         
-        console.log('과목 제거 완료:', subjectName);
+        debugInfo('과목 제거 완료:', subjectName);
         
         // 자동 저장
         saveManualSchedule();
@@ -1710,7 +1710,7 @@ function handleSubjectDoubleClick(e) {
     const subjectName = e.currentTarget.dataset.subject;
     const slotId = e.currentTarget.dataset.slot;
     
-    console.log('과목 더블클릭:', subjectName, 'in', slotId);
+    debugInfo('과목 더블클릭:', subjectName, 'in', slotId);
     
     if (confirm(`${subjectName}을(를) 제거하시겠습니까?`)) {
         removeSubjectFromSlot(subjectName, slotId);
@@ -1725,7 +1725,7 @@ function handleSubjectRightClick(e) {
     const subjectName = e.currentTarget.dataset.subject;
     const slotId = e.currentTarget.dataset.slot;
     
-    console.log('과목 우클릭:', subjectName, 'in', slotId);
+    debugInfo('과목 우클릭:', subjectName, 'in', slotId);
     
     // 간단한 컨텍스트 메뉴 표시
     showContextMenu(e, subjectName, slotId);
@@ -1779,7 +1779,7 @@ function showContextMenu(e, subjectName, slotId) {
 function addDragEventListeners() {
     // 좌측 과목 목록의 과목들
     const subjectItems = document.querySelectorAll('.subject-item');
-    console.log('과목 아이템 드래그 이벤트 추가:', subjectItems.length, '개');
+    debugInfo('과목 아이템 드래그 이벤트 추가:', subjectItems.length, '개');
     
     subjectItems.forEach((item, index) => {
         // 기존 이벤트 리스너 제거 (중복 방지)
@@ -1790,12 +1790,12 @@ function addDragEventListeners() {
         item.addEventListener('dragstart', handleDragStart);
         item.addEventListener('dragend', handleDragEnd);
         
-        console.log(`과목 ${index}: ${item.dataset.subject}에 드래그 이벤트 추가됨`);
+        debugInfo(`과목 ${index}: ${item.dataset.subject}에 드래그 이벤트 추가됨`);
     });
     
     // 시간표에 배치된 과목들
     const assignedSubjects = document.querySelectorAll('.assigned-subject');
-    console.log('배치된 과목 드래그 이벤트 추가:', assignedSubjects.length, '개');
+    debugInfo('배치된 과목 드래그 이벤트 추가:', assignedSubjects.length, '개');
     
     assignedSubjects.forEach((item, index) => {
         // 기존 이벤트 리스너 제거 (중복 방지)
@@ -1810,17 +1810,17 @@ function addDragEventListeners() {
         item.addEventListener('dblclick', handleSubjectDoubleClick);
         item.addEventListener('contextmenu', handleSubjectRightClick);
         
-        console.log(`배치된 과목 ${index}: ${item.dataset.subject}에 이벤트 추가됨`);
+        debugInfo(`배치된 과목 ${index}: ${item.dataset.subject}에 이벤트 추가됨`);
     });
     
-    console.log('드래그 이벤트 리스너 추가 완료');
+    debugInfo('드래그 이벤트 리스너 추가 완료');
 }
 
 // 드롭 이벤트 리스너 추가
 function addDropEventListeners() {
     const scheduleCells = document.querySelectorAll('.schedule-cell');
     
-    console.log('드롭 이벤트 리스너 추가 중...', scheduleCells.length, '개 셀');
+    debugInfo('드롭 이벤트 리스너 추가 중...', scheduleCells.length, '개 셀');
     
     scheduleCells.forEach((cell, index) => {
         // 기존 이벤트 리스너 제거 (중복 방지)
@@ -1833,10 +1833,10 @@ function addDropEventListeners() {
         cell.addEventListener('drop', handleDrop);
         cell.addEventListener('dragleave', handleDragLeave);
         
-        console.log(`셀 ${index}: ${cell.dataset.slot}에 드롭 이벤트 추가됨`);
+        debugInfo(`셀 ${index}: ${cell.dataset.slot}에 드롭 이벤트 추가됨`);
     });
     
-    console.log('드롭 이벤트 리스너 추가 완료');
+    debugInfo('드롭 이벤트 리스너 추가 완료');
 }
 
 // 셀 클릭 이벤트 리스너 추가
@@ -1860,11 +1860,11 @@ function addCellClickListeners() {
 
 // 드래그 시작
 function handleDragStart(e) {
-    console.log('드래그 시작!');
+    debugInfo('드래그 시작!');
     isDragging = true;
     const subjectName = e.target.dataset.subject;
     
-    console.log('드래그 대상:', subjectName);
+    debugInfo('드래그 대상:', subjectName);
     
     e.dataTransfer.setData('text/plain', subjectName);
     e.target.classList.add('dragging');
@@ -1872,7 +1872,7 @@ function handleDragStart(e) {
     // 유효한 드롭 존 하이라이트
     highlightValidDropZones(subjectName);
     
-    console.log('드래그 시작 완료');
+    debugInfo('드래그 시작 완료');
 }
 
 // 드래그 종료
@@ -1920,13 +1920,13 @@ function handleDragLeave(e) {
 function handleDrop(e) {
     e.preventDefault();
     
-    console.log('드롭 이벤트 발생!');
+    debugInfo('드롭 이벤트 발생!');
     
     const subjectName = e.dataTransfer.getData('text/plain');
     const cell = e.currentTarget;
     const slotId = cell.dataset.slot;
     
-    console.log('드롭 정보:', { subjectName, slotId, cellClasses: cell.className });
+    debugInfo('드롭 정보:', { subjectName, slotId, cellClasses: cell.className });
     
     if (!subjectName) {
         console.error('드롭된 과목 이름이 없습니다!');
@@ -1938,22 +1938,22 @@ function handleDrop(e) {
         return;
     }
     
-    console.log('과목 배치 시작:', subjectName, '->', slotId);
+    debugInfo('과목 배치 시작:', subjectName, '->', slotId);
     
     // 캐시에서 검증 결과 조회 (드래그 시 계산된 결과 재사용)
     let validationResult = validationCache.get(slotId);
     
     // 캐시에 없는 경우에만 새로 계산 (예외적 상황)
     if (!validationResult) {
-        console.log('캐시 미스! 새로 계산:', slotId);
+        debugInfo('캐시 미스! 새로 계산:', slotId);
         validationResult = canPlaceSubjectInSlot(subjectName, slotId);
     } else {
-        console.log('캐시 히트! 재사용:', slotId);
+        debugInfo('캐시 히트! 재사용:', slotId);
     }
     
     // 배치 불가능한 경우 중단
     if (!validationResult.canPlace) {
-        console.log('배치 불가:', validationResult.reasons);
+        debugInfo('배치 불가:', validationResult.reasons);
         const detailedReasons = validationResult.reasons.join('\n\n');
         showDetailedAlert('배치 불가', `${subjectName}을(를) ${slotId}에 배치할 수 없습니다.`, detailedReasons, 'error');
         return;
@@ -1986,7 +1986,7 @@ function handleDrop(e) {
     // 배치된 과목들에 드래그 이벤트 다시 추가
     addDragEventListeners();
     
-    console.log('과목 배치 완료!');
+    debugInfo('과목 배치 완료!');
 }
 
 // ================== 제약조건 검증 함수들 ==================
@@ -2069,7 +2069,7 @@ async function loadConstraintData() {
             constraintData.studentBurdenConfig = {};
         }
         
-        console.log('제약조건 데이터 로드 완료:', constraintData);
+        debugInfo('제약조건 데이터 로드 완료:', constraintData);
     } catch (error) {
         console.error('제약조건 데이터 로드 실패:', error);
     }
@@ -2365,17 +2365,17 @@ function checkStudentBurden(subjectName, slotId, currentSchedule) {
     
     // 설정이 없으면 체크하지 않음
     if (!config || (!config.max_exams_per_day && !config.max_hard_exams_per_day)) {
-        console.log(`DEBUG: 학생 부담 설정 없음. config:`, config);
+        debugInfo(`DEBUG: 학생 부담 설정 없음. config:`, config);
         return result;
     }
     
-    console.log(`DEBUG: ${day}에 ${subjectName} 배치 시 학생 부담 체크`);
+    debugInfo(`DEBUG: ${day}에 ${subjectName} 배치 시 학생 부담 체크`);
     
     // 공통 함수를 사용하여 가상 스케줄에서 학생 부담 계산
     const dayBurden = calculateDayStudentBurden(day, currentSchedule, subjectName, slotId);
     
-    console.log(`DEBUG: 학생별 시험 수:`, dayBurden.studentExamCounts);
-    console.log(`DEBUG: 학생별 어려운 시험 수:`, dayBurden.studentHardExamCounts);
+    debugInfo(`DEBUG: 학생별 시험 수:`, dayBurden.studentExamCounts);
+    debugInfo(`DEBUG: 학생별 어려운 시험 수:`, dayBurden.studentHardExamCounts);
     
     // 일반 시험 수 제한 확인
     if (config.max_exams_per_day) {
@@ -2830,7 +2830,7 @@ function displayValidationResult(validationResult) {
     }
     
     // 결과를 콘솔과 알림으로 표시
-    console.log(message);
+    debugInfo(message);
     
     // 간단한 요약을 알림으로 표시
     const summaryMessage = isValid 
@@ -2968,7 +2968,7 @@ function displayDetailedValidationResult(validationResult) {
 
 // 과목을 슬롯에 배치
 function assignSubjectToSlot(subjectName, slotId) {
-    console.log('assignSubjectToSlot 호출:', { subjectName, slotId, currentScheduleData: scheduleData });
+    debugInfo('assignSubjectToSlot 호출:', { subjectName, slotId, currentScheduleData: scheduleData });
     
     // 기존에 배치된 곳에서 제거
     for (const slot of Object.keys(scheduleData)) {
@@ -2988,12 +2988,12 @@ function assignSubjectToSlot(subjectName, slotId) {
     // 중복 체크
     if (!scheduleData[slotId].includes(subjectName)) {
         scheduleData[slotId].push(subjectName);
-        console.log('과목 배치 완료:', { slotId, assignedSubjects: scheduleData[slotId] });
+        debugInfo('과목 배치 완료:', { slotId, assignedSubjects: scheduleData[slotId] });
         
         // 자동 저장
         saveManualSchedule();
     } else {
-        console.log('이미 배치된 과목입니다:', subjectName);
+        debugInfo('이미 배치된 과목입니다:', subjectName);
     }
 }
 
@@ -3003,14 +3003,14 @@ function showSelectedSlotInfo(slotId) {
     const timeInfo = getTimeSlotInfo(slotId);
     const assignedSubjects = scheduleData[slotId] || [];
     
-    console.log('선택된 슬롯:', slotId);
+    debugInfo('선택된 슬롯:', slotId);
     if (timeInfo) {
-        console.log('시간 정보:', `${timeInfo.start} - ${timeInfo.end} (${timeInfo.duration}분)`);
+        debugInfo('시간 정보:', `${timeInfo.start} - ${timeInfo.end} (${timeInfo.duration}분)`);
     }
     if (assignedSubjects.length > 0) {
-        console.log('배정된 과목:', assignedSubjects.join(', '));
+        debugInfo('배정된 과목:', assignedSubjects.join(', '));
     } else {
-        console.log('배정된 과목이 없습니다.');
+        debugInfo('배정된 과목이 없습니다.');
     }
     
     // TODO: 나중에 모달이나 툴팁으로 정보 표시 기능 추가 가능
@@ -3126,13 +3126,13 @@ function calculateStudentBurden() {
         hard: {}      // 어려운 과목 부담 분석
     };
     
-    console.log('학생 부담 분석 시작...');
+    debugInfo('학생 부담 분석 시작...');
     
     // 날짜별 분석
     const examDates = getValidExamDates();
     
     examDates.forEach(([dayLabel, date]) => {
-        console.log(`${dayLabel} 분석 시작...`);
+        debugInfo(`${dayLabel} 분석 시작...`);
         
         // 공통 함수를 사용하여 날짜별 부담 계산
         const dayBurden = calculateDayStudentBurden(dayLabel);
@@ -3140,8 +3140,8 @@ function calculateStudentBurden() {
         result.general[dayLabel] = dayBurden.examCountDistribution;
         result.hard[dayLabel] = dayBurden.hardExamCountDistribution;
         
-        console.log(`${dayLabel} 일반 과목 분포:`, dayBurden.examCountDistribution);
-        console.log(`${dayLabel} 어려운 과목 분포:`, dayBurden.hardExamCountDistribution);
+        debugInfo(`${dayLabel} 일반 과목 분포:`, dayBurden.examCountDistribution);
+        debugInfo(`${dayLabel} 어려운 과목 분포:`, dayBurden.hardExamCountDistribution);
     });
     
     return result;
@@ -3161,7 +3161,7 @@ function getValidExamDates() {
 
 // 학생 부담 분석 결과를 테이블로 렌더링
 function renderStudentBurdenAnalysis() {
-    console.log('학생 부담 분석 렌더링 시작...');
+    debugInfo('학생 부담 분석 렌더링 시작...');
     
     // 설정값 표시 업데이트
     const maxExamsElement = document.getElementById('maxExamsPerDay');
@@ -3193,13 +3193,13 @@ function renderStudentBurdenAnalysis() {
 
 // 부담 분석 테이블 렌더링
 function renderBurdenTable(type, data, examDates, maxAllowed) {
-    console.log(`renderBurdenTable 호출: type=${type}, maxAllowed=${maxAllowed}`);
-    console.log('data:', data);
-    console.log('examDates:', examDates);
+    debugInfo(`renderBurdenTable 호출: type=${type}, maxAllowed=${maxAllowed}`);
+    debugInfo('data:', data);
+    debugInfo('examDates:', examDates);
     
     const tableId = type === 'general' ? 'generalBurdenTable' : 'hardBurdenTable';
     const table = document.getElementById(tableId);
-    console.log(`테이블 요소 찾기: ${tableId}`, table);
+    debugInfo(`테이블 요소 찾기: ${tableId}`, table);
     
     if (!table) {
         console.error(`테이블을 찾을 수 없습니다: ${tableId}`);
@@ -3208,7 +3208,7 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
     
     const thead = table.querySelector('thead tr');
     const tbody = table.querySelector('tbody');
-    console.log('thead:', thead, 'tbody:', tbody);
+    debugInfo('thead:', thead, 'tbody:', tbody);
     
     // 헤더 생성
     thead.innerHTML = '<th class="burden-header">과목 수</th>';
@@ -3229,23 +3229,23 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
         Object.keys(dayData).forEach(count => allExamCounts.add(parseInt(count)));
     });
     const sortedExamCounts = Array.from(allExamCounts).sort((a, b) => b - a);
-    console.log('sortedExamCounts:', sortedExamCounts);
+    debugInfo('sortedExamCounts:', sortedExamCounts);
     
     // 바디 생성
     tbody.innerHTML = '';
-    console.log('테이블 바디 초기화 완료');
+    debugInfo('테이블 바디 초기화 완료');
     
     // 데이터가 없는 경우 안내 메시지 표시
     if (sortedExamCounts.length === 0) {
         const emptyRow = document.createElement('tr');
         emptyRow.innerHTML = `<td colspan="${examDates.length + 1}" class="text-center text-muted py-3">과목을 배치하면 분석 결과가 표시됩니다</td>`;
         tbody.appendChild(emptyRow);
-        console.log(`${type} 테이블에 빈 상태 메시지 추가`);
+        debugInfo(`${type} 테이블에 빈 상태 메시지 추가`);
         return;
     }
     
     sortedExamCounts.forEach(examCount => {
-        console.log(`행 생성 중: ${examCount}개`);
+        debugInfo(`행 생성 중: ${examCount}개`);
         const row = document.createElement('tr');
         row.innerHTML = `<td class="burden-header">${examCount}개</td>`;
         
@@ -3271,12 +3271,12 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
             }
         });
         
-        console.log(`행 추가: ${examCount}개`, row.innerHTML);
+        debugInfo(`행 추가: ${examCount}개`, row.innerHTML);
         tbody.appendChild(row);
     });
     
-    console.log(`${type} 테이블 렌더링 완료`);
-    console.log(`${type} 테이블 현재 상태:`, table.style.display, table.offsetHeight, table.offsetWidth);
+    debugInfo(`${type} 테이블 렌더링 완료`);
+    debugInfo(`${type} 테이블 현재 상태:`, table.style.display, table.offsetHeight, table.offsetWidth);
 }
 
 // 부담 수준에 따른 CSS 클래스 반환
@@ -3292,7 +3292,7 @@ function getBurdenCellClass(examCount, maxAllowed) {
 
 // 상세 정보 모달 표시
 function showBurdenDetail(type, dayLabel, examCount) {
-    console.log(`상세 정보 표시: ${type}, ${dayLabel}, ${examCount}개`);
+    debugInfo(`상세 정보 표시: ${type}, ${dayLabel}, ${examCount}개`);
     
     const modalTitle = document.getElementById('burdenDetailTitle');
     const modalContent = document.getElementById('burdenDetailContent');
@@ -3497,7 +3497,7 @@ let timeThresholds = {
 // custom_exam_info.json에서 교시별 시간 제한 로드
 async function loadPeriodLimitsFromExamInfo() {
     try {
-        console.log('custom_exam_info.json에서 교시 정보 로드 중...');
+        debugInfo('custom_exam_info.json에서 교시 정보 로드 중...');
         
         const response = await fetch('/uploads/custom_exam_info.json');
         if (!response.ok) {
@@ -3507,7 +3507,7 @@ async function loadPeriodLimitsFromExamInfo() {
         const examInfo = await response.json();
         
         if (!examInfo.date_periods) {
-            console.log('date_periods 정보가 없음');
+            debugInfo('date_periods 정보가 없음');
             return;
         }
         
@@ -3535,7 +3535,7 @@ async function loadPeriodLimitsFromExamInfo() {
         }
         
         if (allDurations.length === 0) {
-            console.log('유효한 교시 시간 정보가 없음');
+            debugInfo('유효한 교시 시간 정보가 없음');
             return;
         }
         
@@ -3551,11 +3551,11 @@ async function loadPeriodLimitsFromExamInfo() {
             timeThresholds.shortestPeriod = Math.min(...allPeriodLimits);
         }
         
-        console.log('로드된 교시별 시간 제한:', timeThresholds.periods);
-        console.log(`가장 짧은 교시: ${timeThresholds.shortestPeriod}분`);
+        debugInfo('로드된 교시별 시간 제한:', timeThresholds.periods);
+        debugInfo(`가장 짧은 교시: ${timeThresholds.shortestPeriod}분`);
         
         // 전체 교시 시간 통계
-        console.log('교시 시간 통계:', {
+        debugInfo('교시 시간 통계:', {
             '전체 범위': `${Math.min(...allDurations)}-${Math.max(...allDurations)}분`,
             '교시 개수': Object.keys(timeThresholds.periods).length + '개',
             '평균 시간': Math.round(allDurations.reduce((a, b) => a + b, 0) / allDurations.length) + '분'
@@ -3563,13 +3563,13 @@ async function loadPeriodLimitsFromExamInfo() {
         
     } catch (error) {
         console.error('교시 정보 로드 실패:', error);
-        console.log('기본값 사용');
+        debugInfo('기본값 사용');
     }
 }
 
 // 시험 시간 기준값들을 동적으로 계산
 async function calculateTimeThresholds() {
-    console.log('시험 시간 기준값 계산 시작...');
+    debugInfo('시험 시간 기준값 계산 시작...');
     
     // 과목별 시험 시간 수집
     const durations = [];
@@ -3581,7 +3581,7 @@ async function calculateTimeThresholds() {
     }
     
     if (durations.length === 0) {
-        console.log('시험 시간 정보가 없어 기본값 사용');
+        debugInfo('시험 시간 정보가 없어 기본값 사용');
         return;
     }
     
@@ -3602,7 +3602,7 @@ async function calculateTimeThresholds() {
     // custom_exam_info.json에서 교시별 시간 제한 로드
     await loadPeriodLimitsFromExamInfo();
     
-    console.log('계산된 시험 시간 기준값:', {
+    debugInfo('계산된 시험 시간 기준값:', {
         '짧은 시험 (Q1)': timeThresholds.short + '분',
         '중간 시험 (Median)': timeThresholds.medium + '분', 
         '긴 시험 (Q3)': timeThresholds.long + '분',
@@ -3617,13 +3617,13 @@ function calculateSubjectRecommendations() {
     const unassignedSubjects = getUnassignedSubjects();
     const recommendations = [];
     
-    console.log('추천 계산 시작. 미배치 과목:', unassignedSubjects.length);
-    console.log('constraintData 상태:', constraintData);
-    console.log('constraintData keys:', constraintData ? Object.keys(constraintData) : 'null');
+    debugInfo('추천 계산 시작. 미배치 과목:', unassignedSubjects.length);
+    debugInfo('constraintData 상태:', constraintData);
+    debugInfo('constraintData keys:', constraintData ? Object.keys(constraintData) : 'null');
     
     // 제약조건 데이터가 로드되지 않았으면 기본 추천 제공
     if (!constraintData || Object.keys(constraintData).length === 0) {
-        console.log('제약조건 데이터가 없음. 기본 추천 사용');
+        debugInfo('제약조건 데이터가 없음. 기본 추천 사용');
         return getBasicRecommendations(unassignedSubjects);
     }
     
@@ -3633,9 +3633,9 @@ function calculateSubjectRecommendations() {
         
         // 1. 제약 밀도 - 충돌이 많은 과목 우선
         const conflicts = getSubjectConflicts(subjectName);
-        console.log(`[메인추천] ${subjectName} 총 충돌 계산:`, conflicts);
-        console.log(`[메인추천] constraintData.individualConflicts 길이:`, constraintData.individualConflicts?.length || 0);
-        console.log(`[메인추천] constraintData.teacherConflicts 길이:`, constraintData.teacherConflicts?.length || 0);
+        debugInfo(`[메인추천] ${subjectName} 총 충돌 계산:`, conflicts);
+        debugInfo(`[메인추천] constraintData.individualConflicts 길이:`, constraintData.individualConflicts?.length || 0);
+        debugInfo(`[메인추천] constraintData.teacherConflicts 길이:`, constraintData.teacherConflicts?.length || 0);
         
         const conflictScore = conflicts.length * RECOMMENDATION_CONFIG.scores.conflictMultiplier;
         score += conflictScore * RECOMMENDATION_CONFIG.weights.constraint;
@@ -3704,7 +3704,7 @@ function calculateSubjectRecommendations() {
     // 점수 순으로 정렬
     recommendations.sort((a, b) => b.score - a.score);
     
-    console.log('추천 결과 (상위 5개):', recommendations.slice(0, 5));
+    debugInfo('추천 결과 (상위 5개):', recommendations.slice(0, 5));
     
     return recommendations;
 }
@@ -3747,7 +3747,7 @@ function getBasicRecommendations(unassignedSubjects) {
         const conflicts = getSubjectConflicts(subjectName);
         let conflictScore = 0;
         
-        console.log(`[기본추천] ${subjectName} 충돌 계산:`, conflicts);
+        debugInfo(`[기본추천] ${subjectName} 충돌 계산:`, conflicts);
         
         if (conflicts.length > 0) {
             conflictScore = conflicts.length * 5; // 충돌당 5점
@@ -3770,7 +3770,7 @@ function getBasicRecommendations(unassignedSubjects) {
     // 점수 순으로 정렬
     recommendations.sort((a, b) => b.score - a.score);
     
-    console.log('기본 추천 결과 (상위 5개):', recommendations.slice(0, 5));
+    debugInfo('기본 추천 결과 (상위 5개):', recommendations.slice(0, 5));
     
     return recommendations;
 }
@@ -3779,11 +3779,11 @@ function getBasicRecommendations(unassignedSubjects) {
 function getSubjectConflicts(subjectName) {
     const conflicts = new Set();
     
-    console.log(`[getSubjectConflicts] ${subjectName} 시작`);
+    debugInfo(`[getSubjectConflicts] ${subjectName} 시작`);
     
     // 제약조건 데이터가 없으면 빈 배열 반환
     if (!constraintData) {
-        console.log(`[getSubjectConflicts] constraintData가 null/undefined`);
+        debugInfo(`[getSubjectConflicts] constraintData가 null/undefined`);
         return [];
     }
     
@@ -3799,7 +3799,7 @@ function getSubjectConflicts(subjectName) {
             }
         });
     }
-    console.log(`[getSubjectConflicts] ${subjectName} 사용자 설정 충돌:`, studentConflictSubjects);
+    debugInfo(`[getSubjectConflicts] ${subjectName} 사용자 설정 충돌:`, studentConflictSubjects);
     studentConflictSubjects.forEach(conflict => conflicts.add(conflict));
     
     // 개별 학생 충돌 (individual_conflicts.json 또는 same_grade_conflicts.json)
@@ -3814,7 +3814,7 @@ function getSubjectConflicts(subjectName) {
                 individualConflictSubjects.push(conflict.subject1);
             }
         });
-        console.log(`[getSubjectConflicts] ${subjectName} individual_conflicts 사용:`, individualConflictSubjects);
+        debugInfo(`[getSubjectConflicts] ${subjectName} individual_conflicts 사용:`, individualConflictSubjects);
     } 
     // individual_conflicts가 없거나 비어있으면 same_grade_conflicts 사용
     else if (constraintData.sameGradeConflicts && Array.isArray(constraintData.sameGradeConflicts)) {
@@ -3825,7 +3825,7 @@ function getSubjectConflicts(subjectName) {
                 individualConflictSubjects.push(conflict.subject1);
             }
         });
-        console.log(`[getSubjectConflicts] ${subjectName} same_grade_conflicts 사용:`, individualConflictSubjects);
+        debugInfo(`[getSubjectConflicts] ${subjectName} same_grade_conflicts 사용:`, individualConflictSubjects);
     }
     
     individualConflictSubjects.forEach(conflict => conflicts.add(conflict));
@@ -3841,7 +3841,7 @@ function getSubjectConflicts(subjectName) {
             }
         });
     }
-    console.log(`[getSubjectConflicts] ${subjectName} 교사 충돌:`, teacherConflictSubjects);
+    debugInfo(`[getSubjectConflicts] ${subjectName} 교사 충돌:`, teacherConflictSubjects);
     teacherConflictSubjects.forEach(conflict => conflicts.add(conflict));
     
     // 듣기 충돌 (교사 충돌과 같은 구조로 가정)
@@ -3855,11 +3855,11 @@ function getSubjectConflicts(subjectName) {
             }
         });
     }
-    console.log(`[getSubjectConflicts] ${subjectName} 듣기 충돌:`, listeningConflictSubjects);
+    debugInfo(`[getSubjectConflicts] ${subjectName} 듣기 충돌:`, listeningConflictSubjects);
     listeningConflictSubjects.forEach(conflict => conflicts.add(conflict));
     
     const result = Array.from(conflicts);
-    console.log(`[getSubjectConflicts] ${subjectName} 최종 충돌:`, result);
+    debugInfo(`[getSubjectConflicts] ${subjectName} 최종 충돌:`, result);
     
     return result;
 }
@@ -4127,7 +4127,7 @@ function showRecommendationDetails() {
             if (subjectName) {
                 highlightRecommendedSubject(subjectName);
                 modal.hide();
-                console.log('모달에서 과목 찾기:', subjectName);
+                debugInfo('모달에서 과목 찾기:', subjectName);
             }
         });
     });
@@ -4135,7 +4135,7 @@ function showRecommendationDetails() {
 
 // 추천 과목 하이라이트
 function highlightRecommendedSubject(subjectName) {
-    console.log('highlightRecommendedSubject 호출됨:', subjectName);
+    debugInfo('highlightRecommendedSubject 호출됨:', subjectName);
     
     // 기존 하이라이트 제거
     document.querySelectorAll('.subject-item').forEach(item => {
@@ -4148,9 +4148,9 @@ function highlightRecommendedSubject(subjectName) {
     // 1차 시도: 과목 목록에서 정확한 data-subject 속성으로 찾기
     try {
         subjectItem = document.querySelector(`.subject-item[data-subject="${subjectName}"]`);
-        console.log('1차 시도 (subject-item + data-subject):', subjectItem);
+        debugInfo('1차 시도 (subject-item + data-subject):', subjectItem);
     } catch (e) {
-        console.log('1차 시도 실패 (CSS 선택자 오류):', e);
+        debugInfo('1차 시도 실패 (CSS 선택자 오류):', e);
     }
     
     // 2차 시도: 모든 과목 아이템을 순회하며 data-subject 비교
@@ -4160,7 +4160,7 @@ function highlightRecommendedSubject(subjectName) {
             const dataSubject = item.getAttribute('data-subject');
             if (dataSubject === subjectName) {
                 subjectItem = item;
-                console.log('2차 시도 성공 (data-subject 비교):', subjectItem);
+                debugInfo('2차 시도 성공 (data-subject 비교):', subjectItem);
                 break;
             }
         }
@@ -4173,7 +4173,7 @@ function highlightRecommendedSubject(subjectName) {
             const nameElement = item.querySelector('.subject-name');
             if (nameElement && nameElement.textContent.trim() === subjectName.trim()) {
                 subjectItem = item;
-                console.log('3차 시도 성공 (텍스트 비교):', subjectItem);
+                debugInfo('3차 시도 성공 (텍스트 비교):', subjectItem);
                 break;
             }
         }
@@ -4191,7 +4191,7 @@ function highlightRecommendedSubject(subjectName) {
             if ((dataSubject && dataSubject.replace(/\s+/g, '') === subjectName.replace(/\s+/g, '')) ||
                 (nameText && nameText.replace(/\s+/g, '') === subjectName.replace(/\s+/g, ''))) {
                 subjectItem = item;
-                console.log('4차 시도 성공 (공백 제거 비교):', subjectItem);
+                debugInfo('4차 시도 성공 (공백 제거 비교):', subjectItem);
                 break;
             }
         }
@@ -4215,8 +4215,8 @@ function highlightRecommendedSubject(subjectName) {
             subjectItem.classList.remove('border-warning', 'bg-warning-subtle');
         }, 3000);
     } else {
-        console.log('과목을 찾을 수 없음:', subjectName);
-        console.log('사용 가능한 과목들:', Array.from(document.querySelectorAll('.subject-item')).map(item => {
+        debugInfo('과목을 찾을 수 없음:', subjectName);
+        debugInfo('사용 가능한 과목들:', Array.from(document.querySelectorAll('.subject-item')).map(item => {
             return {
                 dataSubject: item.getAttribute('data-subject'),
                 nameText: item.querySelector('.subject-name')?.textContent?.trim(),
@@ -4466,20 +4466,20 @@ document.getElementById('bannerDetailsBtn').addEventListener('click', function()
 
 // 배너 과목 클릭 이벤트 (이벤트 위임)
 document.getElementById('bannerRecommendations').addEventListener('click', function(e) {
-    console.log('배너 클릭 이벤트 발생:', e.target);
+    debugInfo('배너 클릭 이벤트 발생:', e.target);
     
     const recommendationItem = e.target.closest('.banner-recommendation-item');
-    console.log('찾은 추천 아이템:', recommendationItem);
+    debugInfo('찾은 추천 아이템:', recommendationItem);
     
     if (recommendationItem) {
         const subjectName = recommendationItem.getAttribute('data-subject');
-        console.log('클릭한 과목명:', subjectName);
+        debugInfo('클릭한 과목명:', subjectName);
         
         if (subjectName) {
             // 현재 DOM에 있는 모든 과목 아이템 확인
             const allSubjectItems = document.querySelectorAll('.subject-item');
-            console.log('DOM에 있는 과목 아이템 수:', allSubjectItems.length);
-            console.log('DOM에 있는 과목들:', Array.from(allSubjectItems).map(item => ({
+            debugInfo('DOM에 있는 과목 아이템 수:', allSubjectItems.length);
+            debugInfo('DOM에 있는 과목들:', Array.from(allSubjectItems).map(item => ({
                 dataSubject: item.getAttribute('data-subject'),
                 subjectName: item.querySelector('.subject-name')?.textContent?.trim()
             })));
@@ -4532,7 +4532,7 @@ function updateProgress(percentage, stepMessage) {
 
 function hideLoading() {
     try {
-        console.log('hideLoading 호출됨');
+        debugInfo('hideLoading 호출됨');
         const modalElement = document.getElementById('loadingModal');
         if (!modalElement) {
             console.error('loadingModal 요소를 찾을 수 없습니다');
@@ -4541,10 +4541,10 @@ function hideLoading() {
         
         const modal = bootstrap.Modal.getInstance(modalElement);
         if (modal) {
-            console.log('기존 모달 인스턴스 숨기기');
+            debugInfo('기존 모달 인스턴스 숨기기');
             modal.hide();
         } else {
-            console.log('모달 인스턴스가 없어서 직접 숨기기');
+            debugInfo('모달 인스턴스가 없어서 직접 숨기기');
             modalElement.style.display = 'none';
             // 백드롭 제거
             const backdrop = document.querySelector('.modal-backdrop');
@@ -4666,7 +4666,7 @@ async function saveManualSchedule(createdBy = 'manual') {
         if (!result.success) {
             console.error('배치 저장 실패:', result.error);
         } else {
-            console.log('배치 저장 완료:', createdBy);
+            debugInfo('배치 저장 완료:', createdBy);
         }
     } catch (error) {
         console.error('배치 저장 오류:', error);
@@ -4692,10 +4692,10 @@ async function loadManualSchedule() {
                 renderStudentBurdenAnalysis();
             }
             
-            console.log('수동 배치 로드 완료:', result.data.metadata);
+            debugInfo('수동 배치 로드 완료:', result.data.metadata);
             return true;
         } else {
-            console.log('저장된 수동 배치 데이터가 없습니다.');
+            debugInfo('저장된 수동 배치 데이터가 없습니다.');
             return false;
         }
     } catch (error) {

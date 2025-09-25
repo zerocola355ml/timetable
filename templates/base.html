@@ -10,6 +10,9 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
+    <!-- 디버깅 시스템 -->
+    <script src="{{ url_for('static', filename='js/debug-control.js') }}"></script>
+    
     <style>
         .navbar-brand {
             font-weight: bold;
@@ -157,6 +160,78 @@
                     alertDiv.remove();
                 }
             }, 5000);
+        }
+    </script>
+    
+    <!-- 디버깅 설정 초기화 -->
+    <script>
+        // 페이지 로드 시 서버에서 디버깅 설정 가져오기
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/debug-config')
+                .then(response => response.json())
+                .then(config => {
+                    window.setDebugConfig(config);
+                    debugInfo('디버깅 설정이 서버에서 로드되었습니다:', config);
+                })
+                .catch(error => {
+                    console.warn('디버깅 설정 로드 실패:', error);
+                });
+        });
+        
+        // 디버깅 제어 함수들 (브라우저 콘솔에서 직접 사용)
+        function toggleDebug() {
+            const enabled = !window.DEBUG_CONFIG.enabled;
+            window.setDebugEnabled(enabled);
+            
+            // 서버에도 설정 전송
+            fetch('/api/debug-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    enabled: enabled,
+                    level: window.DEBUG_CONFIG.level
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log(`디버깅이 ${enabled ? '활성화' : '비활성화'}되었습니다`);
+                } else {
+                    console.error('디버깅 설정 변경 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('디버깅 설정 변경 오류: ' + error.message);
+            });
+        }
+        
+        function setDebugLevel(level) {
+            window.setDebugLevel(level);
+            
+            // 서버에도 설정 전송
+            fetch('/api/debug-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    enabled: window.DEBUG_CONFIG.enabled,
+                    level: level
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log(`디버깅 레벨이 ${level}로 설정되었습니다`);
+                } else {
+                    console.error('디버깅 설정 변경 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('디버깅 설정 변경 오류: ' + error.message);
+            });
         }
     </script>
     

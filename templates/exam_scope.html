@@ -192,29 +192,29 @@
         // 과목 정보 데이터 로드
         async function loadExamScopeData() {
             try {
-                console.log('DEBUG: Fetching exam scope data...');
+                debugInfo('DEBUG: Fetching exam scope data...');
                 const response = await fetch('/api/exam-scope-data');
-                console.log('DEBUG: Response status:', response.status);
+                debugInfo('DEBUG: Response status:', response.status);
                 
                 const data = await response.json();
-                console.log('DEBUG: Response data:', data);
+                debugInfo('DEBUG: Response data:', data);
                 
                 if (data.success) {
-                    console.log('DEBUG: Data loaded successfully');
+                    debugInfo('DEBUG: Data loaded successfully');
                     examScopeData = data.data;
                     renderExamScopeTable();
                     // 파일이 있으면 테이블 표시, 업로드 섹션 숨김
                     document.getElementById('uploadSection').style.display = 'none';
                     document.getElementById('dataTable').style.display = 'block';
                 } else {
-                    console.log('DEBUG: Data load failed, error:', data.error);
+                    debugInfo('DEBUG: Data load failed, error:', data.error);
                     if (data.error === 'no_file') {
-                        console.log('DEBUG: No file error detected, showing message');
+                        debugInfo('DEBUG: No file error detected, showing message');
                         // 파일이 없을 때는 업로드 섹션만 표시, 테이블 숨김
                         document.getElementById('uploadSection').style.display = 'block';
                         document.getElementById('dataTable').style.display = 'none';
                     } else {
-                        console.log('DEBUG: Other error detected');
+                        debugInfo('DEBUG: Other error detected');
                         showAlert(`오류: ${data.error}`, 'danger');
                     }
                 }
@@ -508,9 +508,9 @@
 
         // 파일이 없을 때 메시지 표시
         function showNoFileMessage(message) {
-            console.log('DEBUG: showNoFileMessage called with message:', message);
+            debugInfo('DEBUG: showNoFileMessage called with message:', message);
             const tbody = document.getElementById('examScopeTableBody');
-            console.log('DEBUG: Found tbody element:', tbody);
+            debugInfo('DEBUG: Found tbody element:', tbody);
             
             tbody.innerHTML = `
                 <tr>
@@ -523,7 +523,7 @@
                     </td>
                 </tr>
             `;
-            console.log('DEBUG: No file message displayed');
+            debugInfo('DEBUG: No file message displayed');
         }
     </script>
 {% endblock %}

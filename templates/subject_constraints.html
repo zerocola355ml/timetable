@@ -323,16 +323,16 @@ document.addEventListener('DOMContentLoaded', function() {
 // 시험 정보 로드
 async function loadExamInfo() {
     try {
-        console.log('Loading exam info from /uploads/custom_exam_info.json');
+        debugInfo('Loading exam info from /uploads/custom_exam_info.json');
         const response = await fetch('/uploads/custom_exam_info.json');
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
+        debugInfo('Response status:', response.status);
+        debugInfo('Response ok:', response.ok);
         
         if (response.ok) {
             examInfo = await response.json();
-            console.log('Exam info loaded successfully:', examInfo);
-            console.log('시험날짜 keys:', examInfo.시험날짜 ? Object.keys(examInfo.시험날짜) : 'undefined');
-            console.log('date_periods keys:', examInfo.date_periods ? Object.keys(examInfo.date_periods) : 'undefined');
+            debugInfo('Exam info loaded successfully:', examInfo);
+            debugInfo('시험날짜 keys:', examInfo.시험날짜 ? Object.keys(examInfo.시험날짜) : 'undefined');
+            debugInfo('date_periods keys:', examInfo.date_periods ? Object.keys(examInfo.date_periods) : 'undefined');
         } else {
             console.warn('Failed to load exam info, response not ok. Status:', response.status);
             examInfo = null;
@@ -356,10 +356,10 @@ async function loadData() {
             timeSlots = data.time_slots;
             constraints = data.constraints;
             
-            console.log('Data loaded successfully:');
-            console.log('subjects:', subjects);
-            console.log('timeSlots:', timeSlots);
-            console.log('constraints:', constraints);
+            debugInfo('Data loaded successfully:');
+            debugInfo('subjects:', subjects);
+            debugInfo('timeSlots:', timeSlots);
+            debugInfo('constraints:', constraints);
             
             // 시험 정보 파일 로드
             await loadExamInfo();
@@ -659,9 +659,9 @@ function onSubjectChange() {
     const timeSlotTable = document.getElementById('timeSlotTable');
     const timeSlotTableBody = document.getElementById('timeSlotTableBody');
     
-    console.log('onSubjectChange called with subject:', subject);
-    console.log('timeSlots:', timeSlots);
-    console.log('constraints:', constraints);
+    debugInfo('onSubjectChange called with subject:', subject);
+    debugInfo('timeSlots:', timeSlots);
+    debugInfo('constraints:', constraints);
     
     if (!subject) {
         timeSlotTableBody.innerHTML = `
@@ -693,7 +693,7 @@ function onSubjectChange() {
 
 // 시험 시간표 그리드 렌더링
 function renderTimeSlotGrid(subject) {
-    console.log('renderTimeSlotGrid called with subject:', subject);
+    debugInfo('renderTimeSlotGrid called with subject:', subject);
     
     const thead = document.querySelector('#timeSlotTable thead tr');
     const tbody = document.getElementById('timeSlotTableBody');
@@ -715,10 +715,10 @@ function renderTimeSlotGrid(subject) {
     
     // 날짜별 헤더 생성
     const dateGroups = groupTimeSlotsByDate();
-    console.log('Date groups:', dateGroups);
+    debugInfo('Date groups:', dateGroups);
     
     if (dateGroups.length === 0) {
-        console.log('No date groups found, showing fallback');
+        debugInfo('No date groups found, showing fallback');
         tbody.innerHTML = `
             <tr>
                 <td colspan="1" class="text-center text-muted">
@@ -746,10 +746,10 @@ function renderTimeSlotGrid(subject) {
     // 교시별 행 생성
     tbody.innerHTML = '';
     const periodGroups = groupTimeSlotsByPeriod();
-    console.log('Period groups:', periodGroups);
+    debugInfo('Period groups:', periodGroups);
     
     if (periodGroups.length === 0) {
-        console.log('No period groups found');
+        debugInfo('No period groups found');
         return;
     }
     
@@ -809,26 +809,26 @@ function renderTimeSlotGrid(subject) {
         tbody.appendChild(tr);
     });
     
-    console.log('Grid rendering completed');
+    debugInfo('Grid rendering completed');
 }
 
 // 시간대를 날짜별로 그룹화
 function groupTimeSlotsByDate() {
-    console.log('groupTimeSlotsByDate called with timeSlots:', timeSlots);
+    debugInfo('groupTimeSlotsByDate called with timeSlots:', timeSlots);
     
     const dateGroups = [];
     const dateMap = new Map();
     
     if (!timeSlots || timeSlots.length === 0) {
-        console.log('No timeSlots available');
+        debugInfo('No timeSlots available');
         return dateGroups;
     }
     
     timeSlots.forEach((slot, index) => {
-        console.log(`Processing slot ${index}: "${slot}"`);
+        debugInfo(`Processing slot ${index}: "${slot}"`);
         // "제4일_2교시" 형태에 맞는 정규식
         const match = slot.match(/제(\d+)일_(\d+)교시/);
-        console.log('Regex match result:', match);
+        debugInfo('Regex match result:', match);
         
         if (match) {
             const day = match[1];
@@ -844,7 +844,7 @@ function groupTimeSlotsByDate() {
             }
             dateMap.get(dateLabel).periods.push(period);
         } else {
-            console.log(`Slot "${slot}" does not match expected pattern`);
+            debugInfo(`Slot "${slot}" does not match expected pattern`);
         }
     });
     
@@ -854,27 +854,27 @@ function groupTimeSlotsByDate() {
         return dayA - dayB;
     });
     
-    console.log('Final date groups result:', result);
+    debugInfo('Final date groups result:', result);
     return result;
 }
 
 // 시간대를 교시별로 그룹화
 function groupTimeSlotsByPeriod() {
-    console.log('groupTimeSlotsByPeriod called with timeSlots:', timeSlots);
+    debugInfo('groupTimeSlotsByPeriod called with timeSlots:', timeSlots);
     
     const periodGroups = [];
     const periodMap = new Map();
     
     if (!timeSlots || timeSlots.length === 0) {
-        console.log('No timeSlots available for period grouping');
+        debugInfo('No timeSlots available for period grouping');
         return periodGroups;
     }
     
     timeSlots.forEach((slot, index) => {
-        console.log(`Processing slot ${index} for period grouping: "${slot}"`);
+        debugInfo(`Processing slot ${index} for period grouping: "${slot}"`);
         // "제4일_2교시" 형태에 맞는 정규식
         const match = slot.match(/제(\d+)일_(\d+)교시/);
-        console.log('Period regex match result:', match);
+        debugInfo('Period regex match result:', match);
         
         if (match) {
             const day = match[1];
@@ -888,12 +888,12 @@ function groupTimeSlotsByPeriod() {
             }
             periodMap.get(period).days.push(day);
         } else {
-            console.log(`Slot "${slot}" does not match expected pattern for period grouping`);
+            debugInfo(`Slot "${slot}" does not match expected pattern for period grouping`);
         }
     });
     
     const result = Array.from(periodMap.values()).sort((a, b) => parseInt(a.period) - parseInt(b.period));
-    console.log('Final period groups result:', result);
+    debugInfo('Final period groups result:', result);
     return result;
 }
 
@@ -938,17 +938,17 @@ function getTimeSlotInfo(timeSlot) {
 
 // 날짜 포맷팅 함수
 function getFormattedDate(dayNumber) {
-    console.log('getFormattedDate called with dayNumber:', dayNumber);
-    console.log('examInfo:', examInfo);
+    debugInfo('getFormattedDate called with dayNumber:', dayNumber);
+    debugInfo('examInfo:', examInfo);
     
     // examInfo에서 실제 날짜 가져오기
     if (examInfo && examInfo.시험날짜) {
         const dateKey = `제${dayNumber}일`;
-        console.log('Looking for dateKey:', dateKey);
-        console.log('Available keys in examInfo.시험날짜:', Object.keys(examInfo.시험날짜));
+        debugInfo('Looking for dateKey:', dateKey);
+        debugInfo('Available keys in examInfo.시험날짜:', Object.keys(examInfo.시험날짜));
         
         const dateString = examInfo.시험날짜[dateKey];
-        console.log('Found dateString:', dateString);
+        debugInfo('Found dateString:', dateString);
         
         if (dateString) {
             const date = new Date(dateString);
@@ -957,13 +957,13 @@ function getFormattedDate(dayNumber) {
             const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
             const dayName = dayNames[date.getDay()];
             const result = `${month}-${day.toString().padStart(2, '0')}(${dayName})`;
-            console.log('Returning formatted date from examInfo:', result);
+            debugInfo('Returning formatted date from examInfo:', result);
             return result;
         }
     }
     
     // fallback: 기본 날짜 계산 (2024년 8월 20일부터 시작)
-    console.log('Using fallback date calculation');
+    debugInfo('Using fallback date calculation');
     const baseDate = new Date(2024, 7, 20); // 8월은 7 (0-based)
     const targetDate = new Date(baseDate);
     targetDate.setDate(baseDate.getDate() + (dayNumber - 1));
@@ -973,7 +973,7 @@ function getFormattedDate(dayNumber) {
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
     const dayName = dayNames[targetDate.getDay()];
     const fallbackResult = `${month}-${date.toString().padStart(2, '0')}(${dayName})`;
-    console.log('Returning fallback date:', fallbackResult);
+    debugInfo('Returning fallback date:', fallbackResult);
     return fallbackResult;
 }
 
@@ -1096,7 +1096,7 @@ async function handleCheckboxChange(checkbox, subject, timeSlot) {
                 // UI 즉시 업데이트 (제약 조건 목록만)
                 renderConstraints();
                 
-                console.log(`제약 조건 추가됨: ${subject} - ${timeSlot}`);
+                debugInfo(`제약 조건 추가됨: ${subject} - ${timeSlot}`);
             } else {
                 console.error('제약 조건 추가 실패:', data.error);
                 checkbox.checked = false; // 체크 해제
@@ -1130,7 +1130,7 @@ async function handleCheckboxChange(checkbox, subject, timeSlot) {
                 // UI 즉시 업데이트 (제약 조건 목록만)
                 renderConstraints();
                 
-                console.log(`제약 조건 삭제됨: ${subject} - ${timeSlot}`);
+                debugInfo(`제약 조건 삭제됨: ${subject} - ${timeSlot}`);
             } else {
                 console.error('제약 조건 삭제 실패:', data.error);
                 checkbox.checked = true; // 체크 상태로 복원
