@@ -3222,6 +3222,8 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
             </th>
         `;
     });
+    // 합계 열 추가
+    thead.innerHTML += '<th class="text-center burden-header align-top">합계</th>';
     
     // 모든 과목 수 수집 (많은 순으로 정렬)
     const allExamCounts = new Set();
@@ -3238,7 +3240,7 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
     // 데이터가 없는 경우 안내 메시지 표시
     if (sortedExamCounts.length === 0) {
         const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = `<td colspan="${examDates.length + 1}" class="text-center text-muted py-3">과목을 배치하면 분석 결과가 표시됩니다</td>`;
+        emptyRow.innerHTML = `<td colspan="${examDates.length + 2}" class="text-center text-muted py-3">과목을 배치하면 분석 결과가 표시됩니다</td>`;
         tbody.appendChild(emptyRow);
         debugInfo(`${type} 테이블에 빈 상태 메시지 추가`);
         return;
@@ -3249,8 +3251,11 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
         const row = document.createElement('tr');
         row.innerHTML = `<td class="burden-header">${examCount}개</td>`;
         
+        let totalStudents = 0; // 합계 계산용 변수
+        
         examDates.forEach(([dayLabel, date]) => {
             const studentCount = data[dayLabel][examCount] || 0;
+            totalStudents += studentCount; // 합계에 추가
             
             if (studentCount > 0) {
                 // maxAllowed가 설정되어 있을 때만 색상 코딩 적용
@@ -3271,7 +3276,14 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
             }
         });
         
-        debugInfo(`행 추가: ${examCount}개`, row.innerHTML);
+        // 합계 열 추가
+        if (totalStudents > 0) {
+            row.innerHTML += `<td class="text-center">${totalStudents}명</td>`;
+        } else {
+            row.innerHTML += '<td class="text-center text-muted">-</td>';
+        }
+        
+        debugInfo(`행 추가: ${examCount}개, 총 ${totalStudents}명`, row.innerHTML);
         tbody.appendChild(row);
     });
     
