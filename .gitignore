@@ -194,6 +194,8 @@ cython_debug/
 .cursorindexingignore
 
 # Project specific
+*.xlsx
+*.xls
 *.log
 logs/
 temp/
