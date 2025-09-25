@@ -20,10 +20,23 @@ import numpy as np
 from config import ExamSchedulingConfig, DEFAULT_EXAM_INFO_CONFIG, DEFAULT_SYSTEM_CONFIG
 from exam_scheduler_app import ExamSchedulerApp
 from data_loader import DataLoader
+from logger_config import get_logger, setup_logging
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # 실제 운영시에는 환경변수로 관리
 CORS(app)
+
+# 로깅 시스템 초기화
+setup_logging()
+logger = get_logger('web_app')
+
+# 전역 로거를 모든 함수에서 사용할 수 있도록 설정
+def get_logger():
+    return logger
+
+# 모든 함수에서 self.logger 대신 logger 사용하도록 설정
+import builtins
+builtins.logger = logger
 
 # 업로드 설정
 UPLOAD_FOLDER = 'uploads'
@@ -71,7 +84,7 @@ def load_custom_conflicts(conflict_type):
                 else:
                     return []
         except Exception as e:
-            print(f"Error loading custom conflicts: {e}")
+            self.logger.debug(f"Error loading custom conflicts: {e}")
     return []
 
 def save_custom_conflicts(conflict_type, conflicts):
@@ -82,7 +95,7 @@ def save_custom_conflicts(conflict_type, conflicts):
             json.dump(conflicts, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
-        print(f"Error saving custom conflicts: {e}")
+        self.logger.debug(f"Error saving custom conflicts: {e}")
         return False
 
 def load_teacher_conflicts():
@@ -93,7 +106,7 @@ def load_teacher_conflicts():
             with open(conflicts_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Error loading teacher conflicts: {e}")
+            self.logger.debug(f"Error loading teacher conflicts: {e}")
     
     # 기본 빈 리스트 반환
     return []
@@ -106,7 +119,7 @@ def save_teacher_conflicts(conflicts):
             json.dump(conflicts, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
-        print(f"Error saving teacher conflicts: {e}")
+        self.logger.debug(f"Error saving teacher conflicts: {e}")
         return False
 
 def allowed_file(filename):
@@ -219,9 +232,9 @@ def get_schedule_status():
 @app.route('/api/schedule', methods=['POST'])
 def create_schedule():
     """시험 시간표 생성 API"""
-    print("=" * 50)
-    print("🔥 SCHEDULE API CALLED! 🔥")
-    print("=" * 50)
+    logger.debug("=" * 50)
+    logger.debug("🔥 SCHEDULE API CALLED! 🔥")
+    logger.debug("=" * 50)
     
     global schedule_status
     
@@ -437,8 +450,8 @@ def create_schedule():
             schedule_status["error"] = str(e)
             schedule_status["progress"] = 100
             
-        print(f"Error in create_schedule: {str(e)}")  # 디버깅
-        print(f"Traceback: {traceback.format_exc()}")  # 디버깅
+        self.logger.debug(f"Error in create_schedule: {str(e)}")  # 디버깅
+        self.logger.debug(f"Traceback: {traceback.format_exc()}")  # 디버깅
         return jsonify({
             'success': False,
             'error': f'오류가 발생했습니다: {str(e)}',
@@ -515,7 +528,7 @@ def upload_status():
     """업로드된 파일 상태 확인"""
     try:
         files = os.listdir(UPLOAD_FOLDER)
-        print(f"Files in upload folder: {files}")  # 디버깅
+        self.logger.debug(f"Files in upload folder: {files}")  # 디버깅
         
         required_files = [
             '학생배정정보.xlsx',
@@ -528,7 +541,7 @@ def upload_status():
         for file in required_files:
             status[file] = file in files
         
-        print(f"File status: {status}")  # 디버깅
+        self.logger.debug(f"File status: {status}")  # 디버깅
         
         return jsonify({
             'success': True,
@@ -536,7 +549,7 @@ def upload_status():
             'all_uploaded': all(status.values())
         })
     except Exception as e:
-        print(f"Error in upload_status: {str(e)}")  # 디버깅
+        self.logger.debug(f"Error in upload_status: {str(e)}")  # 디버깅
         return jsonify({
             'success': False,
             'error': str(e)
@@ -569,7 +582,7 @@ def conflict_data():
         
         return render_template('conflict_data.html', show_upload_message=False)
     except Exception as e:
-        print(f"Error in conflict_data route: {e}")
+        self.logger.debug(f"Error in conflict_data route: {e}")
         # 에러가 발생해도 페이지는 렌더링
         return render_template('conflict_data.html', show_upload_message=True)
 
@@ -582,18 +595,18 @@ def conflict_data_same_grade():
         if os.path.exists(individual_conflicts_path):
             try:
                 os.remove(individual_conflicts_path)
-                print(f"individual_conflicts.json 파일이 삭제되었습니다.")
+                self.logger.debug(f"individual_conflicts.json 파일이 삭제되었습니다.")
             except Exception as e:
-                print(f"individual_conflicts.json 파일 삭제 중 오류: {e}")
+                self.logger.debug(f"individual_conflicts.json 파일 삭제 중 오류: {e}")
         
         # 학생배정정보.xlsx 파일 삭제 (파일이 없을 때 에러 방지)
         enrollment_file_path = os.path.join(app.config['UPLOAD_FOLDER'], '학생배정정보.xlsx')
         if os.path.exists(enrollment_file_path):
             try:
                 os.remove(enrollment_file_path)
-                print(f"학생배정정보.xlsx 파일이 삭제되었습니다.")
+                self.logger.debug(f"학생배정정보.xlsx 파일이 삭제되었습니다.")
             except Exception as e:
-                print(f"학생배정정보.xlsx 파일 삭제 중 오류: {e}")
+                self.logger.debug(f"학생배정정보.xlsx 파일 삭제 중 오류: {e}")
         
         # 과목 정보 파일 존재 여부 확인
         subject_info_path = os.path.join(app.config['UPLOAD_FOLDER'], '과목 정보.xlsx')
@@ -603,7 +616,7 @@ def conflict_data_same_grade():
         
         return render_template('conflict_data_same_grade.html', show_upload_message=show_upload_message)
     except Exception as e:
-        print(f"Error in conflict_data_same_grade route: {e}")
+        self.logger.debug(f"Error in conflict_data_same_grade route: {e}")
         # 에러가 발생해도 페이지는 렌더링 (업로드 메시지 표시)
         return render_template('conflict_data_same_grade.html', show_upload_message=True)
 
@@ -1205,7 +1218,7 @@ def reset_all_data():
                     deleted_count += 1
                     deleted_files.append(filename + '/')
         except Exception as e:
-            print(f"Error deleting files: {e}")
+            self.logger.debug(f"Error deleting files: {e}")
         
         return jsonify({
             'success': True,
@@ -1502,7 +1515,7 @@ def load_custom_data(filename, default_value):
                 else:
                     return default_value
         except Exception as e:
-            print(f"Error loading {filename}: {e}")
+            self.logger.debug(f"Error loading {filename}: {e}")
     return default_value
 
 def save_custom_data(filename, data):
@@ -1512,7 +1525,7 @@ def save_custom_data(filename, data):
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"Error saving {filename}: {e}")
+        self.logger.debug(f"Error saving {filename}: {e}")
 
 # 시험 정보 편집 관련 라우트들
 def get_merged_exam_info():
@@ -2271,7 +2284,7 @@ def load_custom_teacher_constraints():
                 else:
                     return []
         except Exception as e:
-            print(f"Error loading custom teacher constraints: {e}")
+            self.logger.debug(f"Error loading custom teacher constraints: {e}")
     return []
 
 def save_custom_teacher_constraints(constraints):
@@ -2281,7 +2294,7 @@ def save_custom_teacher_constraints(constraints):
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(constraints, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"Error saving custom teacher constraints: {e}")
+        self.logger.debug(f"Error saving custom teacher constraints: {e}")
         raise
 
 def merge_teacher_constraints(original_constraints, custom_constraints):
@@ -2381,9 +2394,9 @@ def generate_same_grade_conflicts():
         try:
             with open(stats_file_path, 'w', encoding='utf-8') as f:
                 json.dump(subject_grade_stats, f, ensure_ascii=False, indent=2)
-            print(f"subject_stats.json 파일이 생성되었습니다.")
+            self.logger.debug(f"subject_stats.json 파일이 생성되었습니다.")
         except Exception as e:
-            print(f"subject_stats.json 파일 생성 중 오류: {e}")
+            self.logger.debug(f"subject_stats.json 파일 생성 중 오류: {e}")
         
         return jsonify({
             'success': True,
@@ -2392,7 +2405,7 @@ def generate_same_grade_conflicts():
         })
         
     except Exception as e:
-        print(f"Error generating same grade conflicts: {e}")
+        self.logger.debug(f"Error generating same grade conflicts: {e}")
         traceback.print_exc()
         return jsonify({
             'success': False,
@@ -2608,9 +2621,9 @@ def upload_exam_scope_file():
             if os.path.exists(file_path):
                 try:
                     os.remove(file_path)
-                    print(f"충돌 데이터 파일이 초기화되었습니다: {os.path.basename(file_path)}")
+                    self.logger.debug(f"충돌 데이터 파일이 초기화되었습니다: {os.path.basename(file_path)}")
                 except Exception as e:
-                    print(f"충돌 데이터 파일 초기화 중 오류: {e}")
+                    self.logger.debug(f"충돌 데이터 파일 초기화 중 오류: {e}")
         
         return jsonify({
             'success': True,
@@ -2619,7 +2632,7 @@ def upload_exam_scope_file():
         })
         
     except Exception as e:
-        print(f"Error uploading exam scope file: {e}")
+        self.logger.debug(f"Error uploading exam scope file: {e}")
         traceback.print_exc()
         return jsonify({
             'success': False,
@@ -2659,7 +2672,7 @@ def download_exam_scope_template():
         )
         
     except Exception as e:
-        print(f"Error creating exam scope template: {e}")
+        self.logger.debug(f"Error creating exam scope template: {e}")
         return jsonify({
             'success': False,
             'error': f'양식 파일 생성 중 오류가 발생했습니다: {str(e)}'

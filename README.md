@@ -59,6 +59,87 @@
 - **JSON**: 설정 데이터 관리
 - **RESTful API**: 모듈화된 백엔드 아키텍처
 
+## 🔧 터미널 디버깅 메시지 제어
+
+시스템의 디버깅 메시지를 환경변수로 쉽게 제어할 수 있습니다.
+
+### 📋 로그 레벨 설정
+
+```bash
+# 환경변수로 로그 레벨 설정
+export TIMETABLING_LOG_LEVEL=DEBUG    # 모든 디버그 메시지 출력
+export TIMETABLING_LOG_LEVEL=INFO     # 정보 메시지만 출력 (기본값)
+export TIMETABLING_LOG_LEVEL=WARNING  # 경고 이상만 출력
+export TIMETABLING_LOG_LEVEL=ERROR    # 오류 이상만 출력
+export TIMETABLING_LOG_LEVEL=CRITICAL # 치명적 오류만 출력
+```
+
+### 🛠️ 로깅 제어 도구 사용
+
+#### Python 스크립트 사용
+```bash
+# 현재 로그 레벨 확인
+python log_control.py --show
+
+# 디버그 모드 활성화
+python log_control.py --enable-debug
+
+# 정보 모드로 설정
+python log_control.py --level INFO
+
+# 디버그 모드로 애플리케이션 실행
+python log_control.py --run "python exam_scheduler_app.py" --level DEBUG
+```
+
+#### Windows 배치 파일 사용
+```cmd
+# 디버그 모드 활성화
+log_control.bat debug
+
+# 정보 모드로 설정
+log_control.bat info
+
+# 디버그 모드로 애플리케이션 실행
+log_control.bat run-debug
+
+# 웹 애플리케이션을 디버그 모드로 실행
+log_control.bat run-web-debug
+```
+
+### 📁 파일 로깅 설정
+
+```bash
+# 파일 로깅 활성화
+export TIMETABLING_LOG_FILE=true
+export TIMETABLING_LOG_FILE_PATH=logs/timetabling.log
+
+# 또는 Python 스크립트로 설정
+python log_control.py --file-logging true --log-file logs/timetabling.log
+```
+
+### 🎯 사용 시나리오
+
+#### 개발 환경
+```bash
+# 상세한 디버그 정보가 필요한 경우
+export TIMETABLING_LOG_LEVEL=DEBUG
+python exam_scheduler_app.py
+```
+
+#### 운영 환경
+```bash
+# 중요한 메시지만 출력하는 경우
+export TIMETABLING_LOG_LEVEL=WARNING
+python web_app.py
+```
+
+#### 문제 해결
+```bash
+# 오류 메시지만 확인하는 경우
+export TIMETABLING_LOG_LEVEL=ERROR
+python exam_scheduler_app.py
+```
+
 ## 🚀 빠른 시작
 
 ### 1️⃣ 저장소 클론
@@ -103,6 +184,9 @@ timetabling-system/
 ├── 🐍 scheduler.py               # OR-Tools CP-SAT 솔버 구현
 ├── 🐍 data_loader.py            # 데이터 로딩 및 전처리
 ├── 🐍 config.py                 # 설정 관리 및 기본값
+├── 🐍 logger_config.py          # 로깅 시스템 설정
+├── 🐍 log_control.py            # 로깅 제어 스크립트
+├── 🐍 log_control.bat           # Windows 로깅 제어 배치 파일
 ├── 📁 templates/                # Jinja2 HTML 템플릿
 │   ├── index.html               # 메인 대시보드
 │   ├── schedule_manager.html    # 시간표 관리 인터페이스

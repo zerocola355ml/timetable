@@ -3,6 +3,7 @@
 """
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
+import os
 
 
 @dataclass
@@ -117,6 +118,52 @@ DEFAULT_CONFIG = {
 }
 
 @dataclass
+class LoggingConfig:
+    """로깅 설정"""
+    
+    # 로그 레벨 설정
+    log_level: str = 'INFO'  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    
+    # 파일 로깅 설정
+    enable_file_logging: bool = False
+    log_file_path: str = 'timetabling.log'
+    
+    # 로그 포맷
+    log_format: str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    
+    # 환경변수에서 설정 읽기
+    def __post_init__(self):
+        # 환경변수에서 로그 레벨 읽기
+        env_log_level = os.getenv('TIMETABLING_LOG_LEVEL', '').upper()
+        if env_log_level in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+            self.log_level = env_log_level
+        
+        # 환경변수에서 파일 로깅 설정 읽기
+        env_file_logging = os.getenv('TIMETABLING_LOG_FILE', '').lower()
+        if env_file_logging in ['true', '1', 'yes']:
+            self.enable_file_logging = True
+        
+        # 환경변수에서 로그 파일 경로 읽기
+        env_log_file = os.getenv('TIMETABLING_LOG_FILE_PATH', '')
+        if env_log_file:
+            self.log_file_path = env_log_file
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """설정을 딕셔너리로 변환"""
+        return {
+            'log_level': self.log_level,
+            'enable_file_logging': self.enable_file_logging,
+            'log_file_path': self.log_file_path,
+            'log_format': self.log_format
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'LoggingConfig':
+        """딕셔너리에서 설정 객체 생성"""
+        return cls(**data)
+
+
+@dataclass
 class SystemConfig:
     """시스템 전반 설정"""
     
@@ -154,6 +201,9 @@ class SystemConfig:
         """딕셔너리에서 설정 객체 생성"""
         return cls(**data)
 
+# 로깅 설정 인스턴스
+DEFAULT_LOGGING_CONFIG = LoggingConfig()
+
 # 시스템 설정 인스턴스
 DEFAULT_SYSTEM_CONFIG = SystemConfig()
 
@@ -161,5 +211,6 @@ DEFAULT_SYSTEM_CONFIG = SystemConfig()
 DEFAULT_CONFIG = {
     'exam_info': DEFAULT_EXAM_INFO_CONFIG.to_dict(),
     'scheduling': DEFAULT_SCHEDULING_CONFIG.to_dict(),
-    'system': DEFAULT_SYSTEM_CONFIG.to_dict()
+    'system': DEFAULT_SYSTEM_CONFIG.to_dict(),
+    'logging': DEFAULT_LOGGING_CONFIG.to_dict()
 } 

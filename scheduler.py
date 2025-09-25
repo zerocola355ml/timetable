@@ -8,6 +8,7 @@ import pandas as pd
 import re
 import time
 from config import ExamSchedulingConfig
+from logger_config import get_logger
 
 
 class ExamScheduler:
@@ -18,6 +19,7 @@ class ExamScheduler:
         self.model = None
         self.solver = None
         self.exam_slot_vars = {}
+        self.logger = get_logger('scheduler')
         
     def create_slots(self, exam_info: Dict[str, Any]) -> List[str]:
         """시험 슬롯을 생성합니다.
@@ -36,8 +38,8 @@ class ExamScheduler:
                 period_dict[period_num] = period_data
             date_periods[day_num] = period_dict
         
-        print(f"DEBUG: create_slots - exam_dates: {exam_dates}")
-        print(f"DEBUG: create_slots - date_periods keys: {list(date_periods.keys())}")
+        self.logger.debug(f"create_slots - exam_dates: {exam_dates}")
+        self.logger.debug(f"create_slots - date_periods keys: {list(date_periods.keys())}")
 
         # 1) 사용할 일자 라벨 결정: 날짜가 비어있지 않은 것 우선
         used_day_labels: List[str] = []
@@ -61,7 +63,7 @@ class ExamScheduler:
                         if not all_deleted:
                             used_day_labels.append(day_label)
         
-        print(f"DEBUG: create_slots - after step 1: {used_day_labels}")
+        self.logger.debug(f"create_slots - after step 1: {used_day_labels}")
 
         # 2) 만약 비어있지 않은 날짜가 없다면 date_periods의 키를 사용
         if not used_day_labels and date_periods:
@@ -79,7 +81,7 @@ class ExamScheduler:
             
             used_day_labels = [f'제{day_num}일' for day_num in available_days]
         
-        print(f"DEBUG: create_slots - after step 2: {used_day_labels}")
+        self.logger.debug(f"create_slots - after step 2: {used_day_labels}")
 
         # 3) 여전히 날짜가 없으면 exam_info의 시험날짜 확인
         if not used_day_labels:
@@ -93,7 +95,7 @@ class ExamScheduler:
                 # 시험날짜 정보가 없음
                 raise ValueError("시험날짜 정보가 없습니다. custom_exam_info.json 파일의 '시험날짜' 항목을 확인해주세요.")
         
-        print(f"DEBUG: create_slots - after step 3: {used_day_labels}")
+        self.logger.debug(f"create_slots - after step 3: {used_day_labels}")
         
         # 4) date_periods에 없는 날짜와 모든 교시가 _deleted인 날짜는 제외
         final_day_labels = []
@@ -117,7 +119,7 @@ class ExamScheduler:
         
         used_day_labels = final_day_labels
         
-        print(f"DEBUG: create_slots - after step 4: {used_day_labels}")
+        self.logger.debug(f"create_slots - after step 4: {used_day_labels}")
 
         slots: List[str] = []
         for day_label in used_day_labels:
@@ -399,11 +401,11 @@ class ExamScheduler:
     
     def _add_subject_constraints(self, subject_constraints: Dict[str, Dict[str, Any]]):
         """과목별 제약조건을 추가합니다."""
-        print(f"DEBUG: Adding subject constraints: {len(subject_constraints)} subjects")
+        self.logger.debug(f"Adding subject constraints: {len(subject_constraints)} subjects")
         
         for subject, slot_constraints in subject_constraints.items():
             if subject not in self.exam_slot_vars:
-                print(f"DEBUG: Subject {subject} not found in exam_slot_vars, skipping")
+                self.logger.debug(f"Subject {subject} not found in exam_slot_vars, skipping")
                 continue
                 
             for slot_constraint in slot_constraints.keys():
@@ -412,19 +414,19 @@ class ExamScheduler:
                 
                 # 해당 슬롯이 존재하고 과목에 변수가 있는 경우 제약조건 추가
                 if standardized_slot in self.exam_slot_vars[subject]:
-                    print(f"DEBUG: Adding constraint: {subject} cannot be placed in {standardized_slot}")
+                    self.logger.debug(f"Adding constraint: {subject} cannot be placed in {standardized_slot}")
                     self.model.Add(self.exam_slot_vars[subject][standardized_slot] == 0)
                 else:
-                    print(f"DEBUG: Slot {standardized_slot} not available for {subject}")
+                    self.logger.debug(f"Slot {standardized_slot} not available for {subject}")
     
     def _add_teacher_slot_constraints(self, 
                                      teacher_slot_constraints: Dict[str, Dict[str, Any]], 
                                      subject_info_dict: Dict[str, Dict[str, Any]]):
         """교사 슬롯별 제약조건을 추가합니다."""
-        print(f"DEBUG: Adding teacher slot constraints: {len(teacher_slot_constraints)} teachers")
+        self.logger.debug(f"Adding teacher slot constraints: {len(teacher_slot_constraints)} teachers")
         
         for teacher, slot_constraints in teacher_slot_constraints.items():
-            print(f"DEBUG: Processing teacher {teacher} with {len(slot_constraints)} slot constraints")
+            self.logger.debug(f"Processing teacher {teacher} with {len(slot_constraints)} slot constraints")
             
             # 해당 교사가 담당하는 모든 과목 찾기
             teacher_subjects = []
@@ -432,7 +434,7 @@ class ExamScheduler:
                 if '담당교사' in info and teacher in info['담당교사']:
                     teacher_subjects.append(subject)
             
-            print(f"DEBUG: Teacher {teacher} teaches subjects: {teacher_subjects}")
+            self.logger.debug(f"Teacher {teacher} teaches subjects: {teacher_subjects}")
             
             # 각 제약조건 적용
             for slot_constraint in slot_constraints.keys():
@@ -442,14 +444,14 @@ class ExamScheduler:
                 # 해당 교사가 담당하는 모든 과목에 대해 해당 슬롯 금지
                 for subject in teacher_subjects:
                     if subject in self.exam_slot_vars and standardized_slot in self.exam_slot_vars[subject]:
-                        print(f"DEBUG: Adding constraint: {subject} (teacher: {teacher}) cannot be placed in {standardized_slot}")
+                        self.logger.debug(f"Adding constraint: {subject} (teacher: {teacher}) cannot be placed in {standardized_slot}")
                         self.model.Add(self.exam_slot_vars[subject][standardized_slot] == 0)
                     else:
-                        print(f"DEBUG: Slot {standardized_slot} not available for {subject} (teacher: {teacher})")
+                        self.logger.debug(f"Slot {standardized_slot} not available for {subject} (teacher: {teacher})")
     
     def _add_subject_conflict_constraints(self, subject_conflicts: Dict[str, Dict[str, Any]]):
         """과목 충돌 제약조건을 추가합니다."""
-        print(f"DEBUG: Adding subject conflict constraints: {len(subject_conflicts)} conflicts")
+        self.logger.debug(f"Adding subject conflict constraints: {len(subject_conflicts)} conflicts")
         
         for conflict_key, conflict_info in subject_conflicts.items():
             subject1 = conflict_info.get('subject1')
@@ -457,15 +459,15 @@ class ExamScheduler:
             conflict_type = conflict_info.get('type')
             
             if not all([subject1, subject2, conflict_type]):
-                print(f"DEBUG: Incomplete conflict info for {conflict_key}, skipping")
+                self.logger.debug(f"Incomplete conflict info for {conflict_key}, skipping")
                 continue
             
             # 두 과목이 모두 존재하는지 확인
             if subject1 not in self.exam_slot_vars or subject2 not in self.exam_slot_vars:
-                print(f"DEBUG: One of subjects {subject1}, {subject2} not found in exam_slot_vars, skipping")
+                self.logger.debug(f"One of subjects {subject1}, {subject2} not found in exam_slot_vars, skipping")
                 continue
                 
-            print(f"DEBUG: Processing conflict: {subject1} vs {subject2}, type: {conflict_type}")
+            self.logger.debug(f"Processing conflict: {subject1} vs {subject2}, type: {conflict_type}")
             
             if conflict_type == 'avoid_same_time':
                 # 같은 시간에 배치하면 안되는 과목들
@@ -474,11 +476,11 @@ class ExamScheduler:
                 # 같은 시간에 배치되어야 하는 과목들 (필수 동반)
                 self._add_same_time_constraint(subject1, subject2)
             else:
-                print(f"DEBUG: Unknown conflict type: {conflict_type}")
+                self.logger.debug(f"Unknown conflict type: {conflict_type}")
     
     def _add_avoid_same_time_constraint(self, subject1: str, subject2: str):
         """두 과목이 같은 슬롯에 배치되지 않도록 제약조건을 추가합니다."""
-        print(f"DEBUG: Adding avoid_same_time constraint: {subject1} != {subject2}")
+        self.logger.debug(f"Adding avoid_same_time constraint: {subject1} != {subject2}")
         
         # 모든 슬롯에 대해 두 과목이 동시에 배치되지 않도록 제약
         for slot in self._get_all_slots():
@@ -490,7 +492,7 @@ class ExamScheduler:
     
     def _add_same_time_constraint(self, subject1: str, subject2: str):
         """두 과목이 같은 슬롯에 배치되도록 제약조건을 추가합니다."""
-        print(f"DEBUG: Adding same_time constraint: {subject1} == {subject2}")
+        self.logger.debug(f"Adding same_time constraint: {subject1} == {subject2}")
         
         # 두 과목이 모두 배치된 경우, 같은 슬롯에 배치되어야 함
         for slot in self._get_all_slots():
@@ -507,8 +509,8 @@ class ExamScheduler:
                                 slot_to_day: Dict[str, str],
                                 hard_subjects: Dict[str, bool] = None):
         """학생별 제약조건을 추가합니다."""
-        print(f"DEBUG: _add_student_constraints called with hard_subjects: {hard_subjects}")
-        print(f"DEBUG: config.max_hard_exams_per_day: {self.config.max_hard_exams_per_day}")
+        self.logger.debug(f"_add_student_constraints called with hard_subjects: {hard_subjects}")
+        self.logger.debug(f"config.max_hard_exams_per_day: {self.config.max_hard_exams_per_day}")
         
         days = list(set(slot_to_day.values()))
         
@@ -539,8 +541,8 @@ class ExamScheduler:
                     
                     # 디버그 출력 추가
                     if hard_exams_today:
-                        print(f"DEBUG: Student {student}, Day {day}: {len(hard_exams_today)} hard exam variables")
-                        print(f"DEBUG: Hard subjects for this student: {[s for s in student_subjects[student] if hard_subjects and hard_subjects.get(s, False)]}")
+                        self.logger.debug(f"Student {student}, Day {day}: {len(hard_exams_today)} hard exam variables")
+                        self.logger.debug(f"Hard subjects for this student: {[s for s in student_subjects[student] if hard_subjects and hard_subjects.get(s, False)]}")
                     
                     self.model.Add(sum(hard_exams_today) <= self.config.max_hard_exams_per_day)
     
@@ -556,7 +558,7 @@ class ExamScheduler:
     
     def set_objective(self, student_subjects: Dict[str, List[str]], slots: List[str], slot_to_day: Dict[str, str], hard_subjects: Dict[str, bool] = None):
         """목적함수를 설정합니다."""
-        print(f"DEBUG: set_objective called with hard_subjects: {hard_subjects}")
+        self.logger.debug(f"set_objective called with hard_subjects: {hard_subjects}")
         
         days = list(set(slot_to_day.values()))
         students_with_m = []
@@ -591,7 +593,7 @@ class ExamScheduler:
                 
                 # 디버그 출력 추가
                 if hard_exams_today:
-                    print(f"DEBUG: Objective - Student {student}, Day {day}: {len(hard_exams_today)} hard exam variables")
+                    self.logger.debug(f"Objective - Student {student}, Day {day}: {len(hard_exams_today)} hard exam variables")
                 
                 exams_per_day.append(sum(exams_today))
                 hard_exams_per_day.append(sum(hard_exams_today))
@@ -659,11 +661,11 @@ class ExamScheduler:
         self.solver = cp_model.CpSolver()
         self.solver.parameters.max_time_in_seconds = time_limit
         
-        print(f"DEBUG: Solver time limit set to {time_limit} seconds")
-        print(f"DEBUG: Solver parameters: max_time_in_seconds = {self.solver.parameters.max_time_in_seconds}")
+        self.logger.debug(f"Solver time limit set to {time_limit} seconds")
+        self.logger.debug(f"Solver parameters: max_time_in_seconds = {self.solver.parameters.max_time_in_seconds}")
         
         start_time = time.time()
-        print(f"DEBUG: Starting solver at {start_time}")
+        self.logger.debug(f"Starting solver at {start_time}")
         
         # 타이머 기반 남은 시간 표시를 위한 간단한 모니터링
         def update_remaining_time():
@@ -694,9 +696,9 @@ class ExamScheduler:
         
         end_time = time.time()
         actual_duration = end_time - start_time
-        print(f"DEBUG: Solver finished at {end_time}")
-        print(f"DEBUG: Actual solver duration: {actual_duration:.2f} seconds")
-        print(f"DEBUG: Solver status: {status}")
+        self.logger.debug(f"Solver finished at {end_time}")
+        self.logger.debug(f"Actual solver duration: {actual_duration:.2f} seconds")
+        self.logger.debug(f"Solver status: {status}")
         
         # 솔버 완료 후 상태 업데이트
         if status_callback:
@@ -866,7 +868,7 @@ class ExamScheduler:
         Args:
             fixed_assignments: {slot_id: [subject_list]} 형태의 고정 배치 정보
         """
-        print(f"DEBUG: Adding fixed assignment constraints: {fixed_assignments}")
+        self.logger.debug(f"Adding fixed assignment constraints: {fixed_assignments}")
         
         for slot_id, assigned_subjects in fixed_assignments.items():
             for subject in assigned_subjects:
@@ -874,7 +876,7 @@ class ExamScheduler:
                 if subject in self.exam_slot_vars and slot_id in self.exam_slot_vars[subject]:
                     # 해당 과목을 해당 슬롯에 고정 배치
                     self.model.Add(self.exam_slot_vars[subject][slot_id] == 1)
-                    print(f"DEBUG: Fixed assignment - {subject} -> {slot_id}")
+                    self.logger.debug(f"Fixed assignment - {subject} -> {slot_id}")
                     
                     # 다른 모든 슬롯에는 배치하지 않도록 설정
                     for other_slot in self.exam_slot_vars[subject]:
@@ -882,6 +884,6 @@ class ExamScheduler:
                             self.model.Add(self.exam_slot_vars[subject][other_slot] == 0)
                             
                 else:
-                    print(f"WARNING: Cannot fix assignment - {subject} to {slot_id} (subject or slot not found in model)")
+                    self.logger.warning(f"Cannot fix assignment - {subject} to {slot_id} (subject or slot not found in model)")
         
-        print(f"DEBUG: Fixed assignment constraints added successfully") 
+        self.logger.debug(f"Fixed assignment constraints added successfully") 

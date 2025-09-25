@@ -7,6 +7,7 @@ import itertools
 import json
 from typing import Dict, List, Any, Tuple, Union
 from pathlib import Path
+from logger_config import get_logger
 
 
 class DataLoader:
@@ -14,6 +15,7 @@ class DataLoader:
     
     def __init__(self, data_dir: str = "."):
         self.data_dir = Path(data_dir)
+        self.logger = get_logger('data_loader')
         
     def load_enrollment_data(self, file_path: Union[str, Path] = "학생배정정보.xlsx") -> Tuple[Dict, Dict, List, pd.DataFrame]:
         """
@@ -248,11 +250,11 @@ class DataLoader:
                     '담당교사': teacher_list
                 }
             
-            print(f"DEBUG: Successfully processed {len(subject_info_dict)} subjects")
+            self.logger.debug(f"Successfully processed {len(subject_info_dict)} subjects")
             return subject_info_dict
             
         except Exception as e:
-            print(f"ERROR in _load_subject_info_from_excel: {str(e)}")
+            self.logger.error(f"ERROR in _load_subject_info_from_excel: {str(e)}")
             import traceback
             traceback.print_exc()
             raise
@@ -279,7 +281,7 @@ class DataLoader:
             return custom_exam_info
         
         # custom_exam_info.json이 없으면 기본 구조 반환
-        print("Warning: custom_exam_info.json not found. Using default structure.")
+        self.logger.warning("custom_exam_info.json not found. Using default structure.")
         return {
             '학년도': '2024',
             '학기': '1학기',
@@ -319,7 +321,7 @@ class DataLoader:
                         custom_data[teacher_name] = constraint_slots
                         
             except Exception as e:
-                print(f"교사 제약 커스텀 데이터 로드 오류: {e}")
+                self.logger.error(f"교사 제약 커스텀 데이터 로드 오류: {e}")
         
         return custom_data
     
@@ -333,11 +335,11 @@ class DataLoader:
             - teacher_conflict_dict: 담당교사 충돌 딕셔너리
         """
         try:
-            print(f"DEBUG: generate_conflict_dicts 시작 - 과목 수: {len(subject_info_dict)}")
+            self.logger.debug(f"generate_conflict_dicts 시작 - 과목 수: {len(subject_info_dict)}")
             
             # 1. 듣기평가가 있는 과목 리스트 추출
             listening_subjects = [subject for subject, info in subject_info_dict.items() if info.get('듣기평가')]
-            print(f"DEBUG: 듣기평가 과목 수: {len(listening_subjects)}")
+            self.logger.debug(f"듣기평가 과목 수: {len(listening_subjects)}")
             
             # 2. 듣기평가 충돌 딕셔너리 생성
             listening_conflict_dict = {subject: [] for subject in listening_subjects}
@@ -348,27 +350,27 @@ class DataLoader:
             # 3. 담당교사 충돌 딕셔너리 생성
             teacher_conflict_dict = {subject: [] for subject in subject_info_dict}
             subjects = list(subject_info_dict.keys())
-            print(f"DEBUG: 교사 충돌 검사 시작 - 총 과목 수: {len(subjects)}")
+            self.logger.debug(f"교사 충돌 검사 시작 - 총 과목 수: {len(subjects)}")
             
             for i, subj1 in enumerate(subjects):
                 try:
-                    print(f"DEBUG: 과목 '{subj1}' 처리 중... ({i+1}/{len(subjects)})")
+                    self.logger.debug(f"과목 '{subj1}' 처리 중... ({i+1}/{len(subjects)})")
                     
                     # 담당교사 정보가 있는지 확인
                     if '담당교사' not in subject_info_dict[subj1]:
-                        print(f"Warning: 과목 '{subj1}'에 담당교사 정보가 없습니다.")
+                        self.logger.warning(f"과목 '{subj1}'에 담당교사 정보가 없습니다.")
                         continue
                     
                     # 담당교사 정보 확인
                     teachers1_raw = subject_info_dict[subj1]['담당교사']
-                    print(f"DEBUG: 과목 '{subj1}' 담당교사 정보: {teachers1_raw} (타입: {type(teachers1_raw)})")
+                    self.logger.debug(f"과목 '{subj1}' 담당교사 정보: {teachers1_raw} (타입: {type(teachers1_raw)})")
                     
                     if not teachers1_raw:
-                        print(f"Warning: 과목 '{subj1}'의 담당교사가 비어있습니다.")
+                        self.logger.warning(f"과목 '{subj1}'의 담당교사가 비어있습니다.")
                         continue
                         
                     teachers1 = set(teachers1_raw)
-                    print(f"DEBUG: 과목 '{subj1}' 담당교사 집합: {teachers1}")
+                    self.logger.debug(f"과목 '{subj1}' 담당교사 집합: {teachers1}")
                     
                     for subj2 in subjects[i+1:]:
                         try:
@@ -384,25 +386,25 @@ class DataLoader:
                             
                             # 교사가 겹치면 충돌 추가
                             if teachers1 and teachers2 and (teachers1 & teachers2):
-                                print(f"DEBUG: 교사 충돌 발견! '{subj1}' <-> '{subj2}' (공통 교사: {teachers1 & teachers2})")
+                                self.logger.debug(f"교사 충돌 발견! '{subj1}' <-> '{subj2}' (공통 교사: {teachers1 & teachers2})")
                                 teacher_conflict_dict[subj1].append(subj2)
                                 teacher_conflict_dict[subj2].append(subj1)
                                 
                         except Exception as e:
-                            print(f"Warning: 과목 '{subj2}' 처리 중 오류: {e}")
+                            self.logger.warning(f"과목 '{subj2}' 처리 중 오류: {e}")
                             continue
                             
                 except Exception as e:
-                    print(f"Warning: 과목 '{subj1}' 처리 중 오류: {e}")
+                    self.logger.warning(f"과목 '{subj1}' 처리 중 오류: {e}")
                     import traceback
                     traceback.print_exc()
                     continue
             
-            print(f"DEBUG: generate_conflict_dicts 완료")
+            self.logger.debug(f"generate_conflict_dicts 완료")
             return listening_conflict_dict, teacher_conflict_dict
             
         except Exception as e:
-            print(f"Error in generate_conflict_dicts: {e}")
+            self.logger.error(f"Error in generate_conflict_dicts: {e}")
             import traceback
             traceback.print_exc()
             # 에러 발생 시 빈 딕셔너리 반환
@@ -475,7 +477,7 @@ class DataLoader:
                     else:
                         return default_value
             except Exception as e:
-                print(f"Error loading {filename}: {e}")
+                self.logger.error(f"Error loading {filename}: {e}")
         return default_value
     
     def _merge_student_conflicts(self, original: Dict[str, List[str]], 
@@ -483,7 +485,7 @@ class DataLoader:
                                 custom_removed: List[Dict]) -> Dict[str, List[str]]:
         """학생 충돌을 병합합니다."""
         try:
-            print(f"DEBUG: _merge_student_conflicts 시작 - 원본 과목 수: {len(original)}")
+            self.logger.debug(f"_merge_student_conflicts 시작 - 원본 과목 수: {len(original)}")
             
             # 원본 충돌 복사
             merged = {subject: conflicts.copy() for subject, conflicts in original.items()}
@@ -496,7 +498,7 @@ class DataLoader:
                     removed_pairs.add((subject1, subject2))
                     removed_pairs.add((subject2, subject1))
                 except Exception as e:
-                    print(f"Warning: 제거된 충돌 처리 중 오류: {e}, 데이터: {removed}")
+                    self.logger.warning(f"제거된 충돌 처리 중 오류: {e}, 데이터: {removed}")
                     continue
             
             # 원본에서 제거된 충돌 삭제
@@ -504,7 +506,7 @@ class DataLoader:
                 try:
                     merged[subject] = [c for c in conflicts if (subject, c) not in removed_pairs]
                 except Exception as e:
-                    print(f"Warning: 과목 '{subject}' 충돌 제거 중 오류: {e}")
+                    self.logger.debug(f"Warning: 과목 '{subject}' 충돌 제거 중 오류: {e}")
                     continue
             
             # 추가된 커스텀 충돌 처리
@@ -521,14 +523,14 @@ class DataLoader:
                                 merged[subject2] = []
                             merged[subject2].append(subject1)
                 except Exception as e:
-                    print(f"Warning: 커스텀 충돌 추가 중 오류: {e}, 데이터: {custom_conflict}")
+                    self.logger.debug(f"Warning: 커스텀 충돌 추가 중 오류: {e}, 데이터: {custom_conflict}")
                     continue
             
-            print(f"DEBUG: _merge_student_conflicts 완료")
+            self.logger.debug(f"_merge_student_conflicts 완료")
             return merged
             
         except Exception as e:
-            print(f"Error in _merge_student_conflicts: {e}")
+            self.logger.debug(f"Error in _merge_student_conflicts: {e}")
             import traceback
             traceback.print_exc()
             # 에러 발생 시 원본 반환
@@ -635,7 +637,7 @@ class DataLoader:
                                  same_grade_removed: List[Dict]) -> Dict[str, List[str]]:
         """새로운 충돌 유형들을 기존 충돌에 병합합니다."""
         try:
-            print(f"DEBUG: _merge_new_conflict_types 시작")
+            self.logger.debug(f"_merge_new_conflict_types 시작")
             
             # 기존 충돌 복사
             merged = {subject: conflicts.copy() for subject, conflicts in base_conflicts.items()}
@@ -648,7 +650,7 @@ class DataLoader:
                     removed_pairs.add((subject1, subject2))
                     removed_pairs.add((subject2, subject1))
                 except Exception as e:
-                    print(f"Warning: 제거된 같은 학년 충돌 처리 중 오류: {e}, 데이터: {removed}")
+                    self.logger.debug(f"Warning: 제거된 같은 학년 충돌 처리 중 오류: {e}, 데이터: {removed}")
                     continue
             
             # 같은 학년 충돌 추가
@@ -665,7 +667,7 @@ class DataLoader:
                                 merged[subject2] = []
                             merged[subject2].append(subject1)
                 except Exception as e:
-                    print(f"Warning: 같은 학년 충돌 추가 중 오류: {e}, 데이터: {conflict}")
+                    self.logger.debug(f"Warning: 같은 학년 충돌 추가 중 오류: {e}, 데이터: {conflict}")
                     continue
             
             # 개별 학생 충돌 추가
@@ -682,12 +684,12 @@ class DataLoader:
                                 merged[subject2] = []
                             merged[subject2].append(subject1)
                 except Exception as e:
-                    print(f"Warning: 개별 학생 충돌 추가 중 오류: {e}, 데이터: {conflict}")
+                    self.logger.debug(f"Warning: 개별 학생 충돌 추가 중 오류: {e}, 데이터: {conflict}")
                     continue
             
-            print(f"DEBUG: _merge_new_conflict_types 완료")
+            self.logger.debug(f"_merge_new_conflict_types 완료")
             return merged
             
         except Exception as e:
-            print(f"Error in _merge_new_conflict_types: {e}")
+            self.logger.debug(f"Error in _merge_new_conflict_types: {e}")
             return base_conflicts 

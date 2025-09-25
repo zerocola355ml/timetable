@@ -1428,19 +1428,8 @@ function renderSubjectList() {
                 <div class="subject-info">
                     <span class="subject-duration">${subject.시간 || 50}분</span>
                     <span class="subject-grade ms-2">${subject.학년 || ''}학년</span>
-                    ${(() => {
-                        const stats = constraintData.subjectStats[subjectName];
-                        const studentCount = stats?.student_count || 0;
-                        console.log(`과목 ${subjectName} 학생 수:`, studentCount, 'stats:', stats);
-                        
-                        if (studentCount > 0) {
-                            return `<span class="subject-student-count ms-2">${studentCount}명</span>`;
-                        } else if (Object.keys(constraintData.subjectStats).length === 0) {
-                            return '<span class="subject-student-count ms-2 text-muted" title="학생배정정보.xlsx 파일을 업로드하면 학생 수가 표시됩니다">학생 수 미설정</span>';
-                        } else {
-                            return '<span class="subject-student-count ms-2 text-muted">0명</span>';
-                        }
-                    })()}
+                    ${constraintData.subjectStats[subjectName] && constraintData.subjectStats[subjectName].student_count ? 
+                        `<span class="subject-student-count ms-2">${constraintData.subjectStats[subjectName].student_count}명</span>` : ''}
                 </div>
             </div>
         `;
@@ -1652,18 +1641,8 @@ function renderAssignedSubjects(slotId) {
                     <div class="assigned-subject-name">${subjectName}</div>
                     <div class="assigned-subject-info">
                         ${subject.시간 || 50}분 | ${subject.학년 || ''}학년
-                        ${(() => {
-                            const stats = constraintData.subjectStats[subjectName];
-                            const studentCount = stats?.student_count || 0;
-                            
-                            if (studentCount > 0) {
-                                return ` | ${studentCount}명`;
-                            } else if (Object.keys(constraintData.subjectStats).length === 0) {
-                                return ' | 학생 수 미설정';
-                            } else {
-                                return ' | 0명';
-                            }
-                        })()}
+                        ${constraintData.subjectStats[subjectName] && constraintData.subjectStats[subjectName].student_count ? 
+                            ` | ${constraintData.subjectStats[subjectName].student_count}명` : ''}
                         ${subject.듣기평가 ? '<span class="badge bg-warning ms-1">듣기</span>' : ''}
                     </div>
                     <div class="assigned-subject-actions">
@@ -2067,11 +2046,6 @@ async function loadConstraintData() {
             studentBurdenConfig: studentBurdenConfig || {},
             hardSubjects: hardSubjects || {}
         };
-        
-        console.log('constraintData.subjectStats 로드 완료:', constraintData.subjectStats);
-        console.log('과목별 학생 수:', Object.keys(constraintData.subjectStats).map(subject => 
-            `${subject}: ${constraintData.subjectStats[subject]?.student_count || 0}명`
-        ));
         
         // 학생 부담 설정값 업데이트 (실제 설정값만 사용, 기본값 없음)
         if (studentBurdenConfig && Object.keys(studentBurdenConfig).length > 0) {
@@ -3248,8 +3222,6 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
             </th>
         `;
     });
-    // 합계 열 추가
-    thead.innerHTML += '<th class="burden-header text-center">합계</th>';
     
     // 모든 과목 수 수집 (많은 순으로 정렬)
     const allExamCounts = new Set();
@@ -3266,7 +3238,7 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
     // 데이터가 없는 경우 안내 메시지 표시
     if (sortedExamCounts.length === 0) {
         const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = `<td colspan="${examDates.length + 2}" class="text-center text-muted py-3">과목을 배치하면 분석 결과가 표시됩니다</td>`;
+        emptyRow.innerHTML = `<td colspan="${examDates.length + 1}" class="text-center text-muted py-3">과목을 배치하면 분석 결과가 표시됩니다</td>`;
         tbody.appendChild(emptyRow);
         console.log(`${type} 테이블에 빈 상태 메시지 추가`);
         return;
@@ -3277,11 +3249,8 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
         const row = document.createElement('tr');
         row.innerHTML = `<td class="burden-header">${examCount}개</td>`;
         
-        let totalStudents = 0;
-        
         examDates.forEach(([dayLabel, date]) => {
             const studentCount = data[dayLabel][examCount] || 0;
-            totalStudents += studentCount;
             
             if (studentCount > 0) {
                 // maxAllowed가 설정되어 있을 때만 색상 코딩 적용
@@ -3301,13 +3270,6 @@ function renderBurdenTable(type, data, examDates, maxAllowed) {
                 row.innerHTML += '<td class="text-muted">-</td>';
             }
         });
-        
-        // 합계 열 추가
-        row.innerHTML += `
-            <td class="burden-header text-center fw-bold ${totalStudents > 0 ? 'text-primary' : 'text-muted'}">
-                ${totalStudents > 0 ? `${totalStudents}명` : '-'}
-            </td>
-        `;
         
         console.log(`행 추가: ${examCount}개`, row.innerHTML);
         tbody.appendChild(row);
