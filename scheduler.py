@@ -660,11 +660,16 @@ class ExamScheduler:
                 'total_subjects': validation_result['total_subjects']
             }
         
-        self.solver = cp_model.CpSolver()
-        self.solver.parameters.max_time_in_seconds = time_limit
-        
-        self.logger.debug(f"Solver time limit set to {time_limit} seconds")
-        self.logger.debug(f"Solver parameters: max_time_in_seconds = {self.solver.parameters.max_time_in_seconds}")
+        # 솔버가 이미 초기화되지 않은 경우에만 초기화
+        if not self.solver:
+            self.solver = cp_model.CpSolver()
+            self.solver.parameters.max_time_in_seconds = time_limit
+            
+            self.logger.debug(f"Solver time limit set to {time_limit} seconds")
+            self.logger.debug(f"Solver parameters: max_time_in_seconds = {self.solver.parameters.max_time_in_seconds}")
+        else:
+            self.logger.debug("Using pre-initialized solver")
+            self.logger.debug(f"Pre-initialized solver time limit: {self.solver.parameters.max_time_in_seconds}")
         
         start_time = time.time()
         self.logger.debug(f"Starting solver at {start_time}")
@@ -1277,5 +1282,165 @@ class ExamScheduler:
                 if len(hard_exams_today) > use_config.max_hard_exams_per_day:
                     self.logger.debug(f"Student {student} would have {len(hard_exams_today)} hard exams on {day} (limit: {use_config.max_hard_exams_per_day})")
                     return False
+
+        return True
+    
+    def set_initial_solution_from_clique(self, clique_placements: Dict[str, str]):
+        """
+        클리크 배치 결과를 OR-Tools의 초기 해로 설정합니다.
         
-        return True 
+        Args:
+            clique_placements: {subject: slot} 형태의 클리크 배치 결과
+        """
+        self.logger.debug(f"Setting initial solution from clique placements: {clique_placements}")
+        
+        try:
+            # 클리크로 배치된 과목들을 힌트로 설정
+            for subject, slot in clique_placements.items():
+                if subject in self.exam_slot_vars and slot in self.exam_slot_vars[subject]:
+                    var = self.exam_slot_vars[subject][slot]
+                    self.model.AddHint(var, 1)
+                    self.logger.debug(f"Add hint: {subject} -> {slot} = 1")
+            
+            # 나머지 모든 변수들을 0으로 힌트 설정
+            hint_count = 0
+            for subject, var_dict in self.exam_slot_vars.items():
+                for slot, var in var_dict.items():
+                    if not (subject in clique_placements and clique_placements[subject] == slot):
+                        self.model.AddHint(var, 0)
+                        hint_count += 1
+            
+            self.logger.debug(f"Added {len(clique_placements)} clique hints and {hint_count} zero hints")
+            
+        except Exception as e:
+            self.logger.error(f"Error setting initial solution: {e}")
+    
+    def create_schedule_with_clique_hint(self,
+                                       subject_info_dict: Dict[str, Any],
+                                       student_conflict_dict: Dict[str, List[str]],
+                                       listening_conflict_dict: Dict[str, List[str]],
+                                       teacher_conflict_dict: Dict[str, List[str]],
+                                       teacher_unavailable_dates: Dict[str, List[str]],
+                                       student_subjects: Dict[str, List[str]],
+                                       slots: List[str],
+                                       slot_to_day: Dict[str, str],
+                                       slot_to_period_limit: Dict[str, int],
+                                       hard_subjects: Dict[str, bool] = None,
+                                       subject_constraints: Dict[str, Dict[str, Any]] = None,
+                                       teacher_slot_constraints: Dict[str, Dict[str, Any]] = None,
+                                       subject_conflicts: Dict[str, Dict[str, Any]] = None,
+                                       fixed_assignments: Dict[str, List[str]] = None,
+                                       time_limit: int = 10,
+                                       status_callback=None) -> Tuple[str, Dict[str, Any]]:
+        """
+        클리크를 초기 해로 사용하여 자동배치를 실행합니다.
+        """
+        self.logger.info("Starting schedule creation with clique hint...")
+        
+        try:
+            # 1. 최대 클리크 찾기
+            if status_callback:
+                status_callback("최대 클리크를 분석하고 있습니다...", 10)
+            
+            clique_result = self.find_maximum_cliques(
+                subject_info_dict,
+                student_conflict_dict,
+                listening_conflict_dict,
+                teacher_conflict_dict,
+                fixed_assignments
+            )
+            
+            clique_placements = {}
+            if clique_result['max_clique']:
+                self.logger.info(f"Found maximum clique with {len(clique_result['max_clique'])} subjects")
+                
+                # 2. 클리크 배치 (고정하지 않음)
+                if status_callback:
+                    status_callback("클리크 과목들을 배치하고 있습니다...", 20)
+                
+                placement_result = self.place_clique_subjects(
+                    clique_result['max_clique'],
+                    subject_info_dict,
+                    slots,
+                    slot_to_period_limit,
+                    teacher_unavailable_dates,
+                    subject_constraints,
+                    teacher_slot_constraints,
+                    fixed_assignments or {},
+                    student_conflict_dict,
+                    listening_conflict_dict,
+                    teacher_conflict_dict,
+                    student_subjects,
+                    slot_to_day,
+                    hard_subjects
+                )
+                
+                clique_placements = placement_result['placed_subjects']
+                self.logger.info(f"Placed {len(clique_placements)} clique subjects as hints")
+            else:
+                self.logger.info("No maximum clique found, proceeding without hints")
+            
+            # 3. 모델 구축
+            if status_callback:
+                status_callback("최적화 모델을 구축하고 있습니다...", 30)
+            
+            self.build_model(
+                subject_info_dict,
+                student_conflict_dict,
+                listening_conflict_dict,
+                teacher_conflict_dict,
+                teacher_unavailable_dates,
+                student_subjects,
+                slots,
+                slot_to_day,
+                slot_to_period_limit,
+                hard_subjects,
+                subject_constraints,
+                teacher_slot_constraints,
+                subject_conflicts,
+                fixed_assignments
+            )
+            
+            # 4. 목적함수 설정
+            if status_callback:
+                status_callback("목적함수를 설정하고 있습니다...", 40)
+            
+            self.set_objective(student_subjects, slots, slot_to_day, hard_subjects)
+            
+            # 5. 클리크 배치를 초기 해로 설정 (모델에 힌트 추가)
+            if clique_placements:
+                if status_callback:
+                    status_callback("클리크 힌트를 설정하고 있습니다...", 50)
+                self.set_initial_solution_from_clique(clique_placements)
+            
+            # 6. 솔버 초기화
+            self.solver = cp_model.CpSolver()
+            self.solver.parameters.max_time_in_seconds = time_limit
+            self.logger.debug(f"Solver initialized for clique hint schedule")
+            
+            # 7. 솔버 실행 (클리크 배치가 변경될 수 있음)
+            if status_callback:
+                status_callback("최적화를 실행하고 있습니다...", 60)
+            
+            self.logger.debug("About to call solve() method")
+            try:
+                status, result = self.solve(time_limit, status_callback)
+                self.logger.debug(f"Solve completed with status: {status}")
+            except Exception as e:
+                self.logger.error(f"Error in solve method: {e}")
+                raise
+            
+            # 7. 결과에 클리크 정보 추가
+            if status == "SUCCESS" and result:
+                result['clique_info'] = {
+                    'max_clique_size': len(clique_result['max_clique']) if clique_result['max_clique'] else 0,
+                    'max_clique_subjects': clique_result['max_clique'],
+                    'placed_as_hints': len(clique_placements),
+                    'clique_placements': clique_placements
+                }
+            
+            return status, result
+            
+        except Exception as e:
+            self.logger.error(f"Error in create_schedule_with_clique_hint: {e}")
+            return "ERROR", {"error": str(e)}

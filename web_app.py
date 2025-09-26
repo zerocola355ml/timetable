@@ -3473,5 +3473,131 @@ def place_maximum_clique():
         }), 500
 
 
+@app.route('/api/schedule-with-clique-hint', methods=['POST'])
+def schedule_with_clique_hint():
+    """클리크를 초기 해로 사용하여 자동배치를 실행하는 API"""
+    try:
+        logger.info("Schedule with clique hint request received")
+        
+        # 현재 수동 배치 상태 로드
+        current_assignments = {}
+        manual_schedule_file = os.path.join(UPLOAD_FOLDER, 'manual_schedule.json')
+        if os.path.exists(manual_schedule_file):
+            with open(manual_schedule_file, 'r', encoding='utf-8') as f:
+                schedule_data = json.load(f)
+                current_assignments = schedule_data.get('slot_assignments', {})
+        
+        # 요청 데이터 파싱
+        data = request.get_json() or {}
+        time_limit = data.get('time_limit', 10)
+        
+        logger.debug(f"Time limit: {time_limit}")
+        
+        # 데이터 로더 초기화
+        data_loader = DataLoader(UPLOAD_FOLDER)
+        scheduler_app = ExamSchedulerApp(data_dir=UPLOAD_FOLDER)
+        
+        # 모든 데이터 로드
+        if not scheduler_app.load_all_data():
+            return jsonify({
+                'success': False,
+                'error': '필요한 데이터 파일을 로드할 수 없습니다.'
+            }), 400
+        
+        # 스케줄러 초기화
+        scheduler = scheduler_app.scheduler
+        
+        # config 정보 확인 및 수정
+        from config import ExamSchedulingConfig
+        logger.debug(f"Original scheduler.config type: {type(scheduler.config)}")
+        
+        # 새로운 config 객체 생성 (기본값 사용)
+        new_config = ExamSchedulingConfig()
+        scheduler.config = new_config
+        
+        logger.debug(f"New scheduler.config type: {type(scheduler.config)}")
+        logger.debug(f"max_exams_per_day: {scheduler.config.max_exams_per_day}")
+        logger.debug(f"max_hard_exams_per_day: {scheduler.config.max_hard_exams_per_day}")
+        
+        # 학생 부담 설정이 있는지 확인하고 적용
+        try:
+            burden_config_file = os.path.join(UPLOAD_FOLDER, 'student_burden_config.json')
+            if os.path.exists(burden_config_file):
+                with open(burden_config_file, 'r', encoding='utf-8') as f:
+                    burden_config = json.load(f)
+                    if 'max_exams_per_day' in burden_config:
+                        scheduler.config.max_exams_per_day = burden_config['max_exams_per_day']
+                    if 'max_hard_exams_per_day' in burden_config:
+                        scheduler.config.max_hard_exams_per_day = burden_config['max_hard_exams_per_day']
+                    logger.debug(f"Applied burden config: max_exams_per_day={scheduler.config.max_exams_per_day}, max_hard_exams_per_day={scheduler.config.max_hard_exams_per_day}")
+        except Exception as e:
+            logger.debug(f"Could not load burden config: {e}")
+        
+        # 슬롯 생성
+        slots = scheduler.create_slots(scheduler_app.exam_info)
+        slot_to_day, slot_to_period_limit = scheduler.create_slot_mappings(slots, scheduler_app.exam_info)
+        
+        logger.debug(f"Created {len(slots)} slots")
+        
+        # 클리크 힌트를 사용한 스케줄 생성
+        status, result = scheduler.create_schedule_with_clique_hint(
+            scheduler_app.subject_info_dict,
+            scheduler_app.student_conflict_dict,
+            scheduler_app.listening_conflict_dict,
+            scheduler_app.teacher_conflict_dict,
+            scheduler_app.teacher_unavailable_dates,
+            scheduler_app.student_subjects,
+            slots,
+            slot_to_day,
+            slot_to_period_limit,
+            scheduler_app.hard_subjects,
+            scheduler_app.subject_constraints,
+            scheduler_app.teacher_slot_constraints,
+            scheduler_app.subject_conflicts,
+            current_assignments,
+            time_limit,
+            None  # status_callback은 웹에서는 사용하지 않음
+        )
+        
+        if status == "SUCCESS":
+            # 결과 저장
+            schedule_data = {
+                'slot_assignments': result['slot_assignments'],
+                'metadata': {
+                    'last_modified': datetime.now().isoformat(),
+                    'created_by': 'clique_hint_automatic',
+                    'version': '1.0',
+                    'clique_info': result.get('clique_info', {})
+                }
+            }
+            
+            with open(manual_schedule_file, 'w', encoding='utf-8') as f:
+                json.dump(schedule_data, f, ensure_ascii=False, indent=2)
+            
+            clique_info = result.get('clique_info', {})
+            message = f'클리크 힌트 자동배치가 완료되었습니다! (클리크 크기: {clique_info.get("max_clique_size", 0)}개)'
+            
+            return jsonify({
+                'success': True,
+                'message': message,
+                'slot_assignments': result['slot_assignments'],
+                'clique_info': clique_info
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', '스케줄 생성에 실패했습니다.'),
+                'status': status
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Schedule with clique hint error: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'클리크 힌트 자동배치 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
