@@ -47,6 +47,7 @@ app.config['MAX_CONTENT_LENGTH'] = DEFAULT_SYSTEM_CONFIG.max_file_size
 # 업로드 폴더 생성
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
 # 스케줄링 진행상황 전역 변수
 schedule_status = {
     "step": "대기중",

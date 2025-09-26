@@ -1228,7 +1228,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadConstraintData();
     
     // 시간표 매니저 초기화
-    initializeScheduleManager();
+    await initializeScheduleManager();
     
     // 저장된 수동 배치 데이터 로드
     await loadManualSchedule();
@@ -1485,16 +1485,19 @@ function renderScheduleGrid() {
     
     // 전체 사용 가능한 교시들을 먼저 파악
     const allAvailablePeriods = new Set();
-    const datePeriods = examInfo.date_periods || {};
     
-    Object.values(datePeriods).forEach(dayPeriods => {
-        Object.keys(dayPeriods).forEach(periodNum => {
-            const periodData = dayPeriods[periodNum];
-            if (!periodData._deleted) {
-                allAvailablePeriods.add(parseInt(periodNum));
+    // 시험타임 데이터에서 교시 정보 추출
+    if (examInfo.시험타임) {
+        Object.keys(examInfo.시험타임).forEach(timeKey => {
+            // "제1일1교시" 형식에서 교시 번호 추출
+            const periodMatch = timeKey.match(/제\d+일(\d+)교시/);
+            if (periodMatch) {
+                const periodNum = parseInt(periodMatch[1]);
+                allAvailablePeriods.add(periodNum);
             }
         });
-    });
+    }
+    
     
     // 교시가 없으면 빈 배열 사용 (하드코딩 제거)
     const periodsToRender = allAvailablePeriods.size > 0 ? 
@@ -1516,17 +1519,19 @@ function renderScheduleGrid() {
         const dayMatch = dayLabel.match(/제(\d+)일/);
         if (dayMatch) {
             const dayNum = dayMatch[1];
-            const dayPeriods = datePeriods[dayNum] || {};
             dateToAvailablePeriods[dayLabel] = new Set();
             
-            Object.keys(dayPeriods).forEach(periodNum => {
-                const periodData = dayPeriods[periodNum];
-                if (!periodData._deleted) {
-                    dateToAvailablePeriods[dayLabel].add(parseInt(periodNum));
-                }
-            });
+            // 시험타임 데이터에서 해당 날짜의 교시 정보 추출
+            if (examInfo.시험타임) {
+                Object.keys(examInfo.시험타임).forEach(timeKey => {
+                    const timeMatch = timeKey.match(/제(\d+)일(\d+)교시/);
+                    if (timeMatch && timeMatch[1] === dayNum) {
+                        const periodNum = parseInt(timeMatch[2]);
+                        dateToAvailablePeriods[dayLabel].add(periodNum);
+                    }
+                });
+            }
             
-            // 기본값 없음 (완전히 동적 처리)
         }
     });
     
@@ -1585,40 +1590,22 @@ function renderScheduleGrid() {
 
 // 시간 슬롯 정보 가져오기 (날짜별 개별 시간 지원)
 function getTimeSlotInfo(slotId) {
-    // date_periods에서 찾기 (우선 - 날짜별 개별 시간)
-    const dayMatch = slotId.match(/제(\d+)일(\d+)교시/);
-    if (dayMatch && examInfo.date_periods) {
-        const dayNum = dayMatch[1];
-        const periodNum = dayMatch[2];
-        const dayPeriods = examInfo.date_periods[dayNum];
+    // 시험타임에서 찾기 (우선)
+    if (examInfo.시험타임 && examInfo.시험타임[slotId]) {
+        const timeInfo = examInfo.시험타임[slotId];
+        const duration = parseInt(timeInfo.진행시간) || 50;
+        const startTime = timeInfo.시작.replace(':00', ''); // ":00" 제거
+        const endTime = timeInfo.종료.replace(':00', ''); // ":00" 제거
         
-        if (dayPeriods && dayPeriods[periodNum] && !dayPeriods[periodNum]._deleted) {
-            const periodData = dayPeriods[periodNum];
-            const duration = parseInt(periodData.duration) || 50;
-            const startTime = periodData.start_time;
-            const endTime = periodData.end_time;
-            
-            debugInfo(`슬롯 ${slotId}: ${startTime} - ${endTime} (${duration}분) [JSON에서 직접 로드]`);
-            
-            return {
-                start: startTime,
-                end: endTime,
-                duration: duration
-            };
-        }
-    }
-    
-    // fallback: 시험타임에서 찾기 (기존 방식)
-    const timeData = examInfo.시험타임 && examInfo.시험타임[slotId];
-    if (timeData && timeData.시작 && timeData.종료) {
-        debugInfo(`슬롯 ${slotId}: ${timeData.시작} - ${timeData.종료} (${timeData.진행시간}분) [시험타임에서 로드]`);
+        debugInfo(`슬롯 ${slotId}: ${startTime} - ${endTime} (${duration}분) [시험타임에서 로드]`);
         
         return {
-            start: timeData.시작.slice(0, 5), // HH:MM 형식
-            end: timeData.종료.slice(0, 5),
-            duration: timeData.진행시간 || 50
+            start: startTime,
+            end: endTime,
+            duration: duration
         };
     }
+    
     
     console.warn(`슬롯 ${slotId}: 시간 정보를 찾을 수 없습니다.`);
     return null;
@@ -3506,41 +3493,35 @@ let timeThresholds = {
     shortestPeriod: 50  // 가장 짧은 교시의 시간 (동적으로 계산됨)
 };
 
-// custom_exam_info.json에서 교시별 시간 제한 로드
-async function loadPeriodLimitsFromExamInfo() {
+// examInfo에서 교시별 시간 제한 로드 (이미 로드된 데이터 사용)
+function loadPeriodLimitsFromExamInfo() {
     try {
-        debugInfo('custom_exam_info.json에서 교시 정보 로드 중...');
+        debugInfo('examInfo에서 교시 정보 로드 중...');
         
-        const response = await fetch('/uploads/custom_exam_info.json');
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const examInfo = await response.json();
-        
-        if (!examInfo.date_periods) {
-            debugInfo('date_periods 정보가 없음');
+        if (!examInfo.시험타임) {
+            debugInfo('시험타임 정보가 없음');
             return;
         }
         
         const allDurations = [];
         const periodLimits = {};
         
-        // 모든 날짜와 교시의 duration 수집
-        for (const dayKey in examInfo.date_periods) {
-            const dayPeriods = examInfo.date_periods[dayKey];
-            for (const periodKey in dayPeriods) {
-                const periodInfo = dayPeriods[periodKey];
-                if (periodInfo.duration) {
-                    const duration = parseInt(periodInfo.duration);
-                    if (!isNaN(duration) && duration > 0) {
-                        allDurations.push(duration);
-                        
-                        // 교시별 제한 시간 수집
-                        if (!periodLimits[periodKey]) {
-                            periodLimits[periodKey] = [];
+        // 시험타임에서 교시별 시간 정보 수집
+        for (const timeKey in examInfo.시험타임) {
+            const timeInfo = examInfo.시험타임[timeKey];
+            if (timeInfo.진행시간) {
+                const duration = parseInt(timeInfo.진행시간);
+                if (!isNaN(duration) && duration > 0) {
+                    allDurations.push(duration);
+                    
+                    // 교시 번호 추출 (예: "제1일1교시" -> "1")
+                    const periodMatch = timeKey.match(/제\d+일(\d+)교시/);
+                    if (periodMatch) {
+                        const periodNum = periodMatch[1];
+                        if (!periodLimits[periodNum]) {
+                            periodLimits[periodNum] = [];
                         }
-                        periodLimits[periodKey].push(duration);
+                        periodLimits[periodNum].push(duration);
                     }
                 }
             }
@@ -3565,13 +3546,6 @@ async function loadPeriodLimitsFromExamInfo() {
         
         debugInfo('로드된 교시별 시간 제한:', timeThresholds.periods);
         debugInfo(`가장 짧은 교시: ${timeThresholds.shortestPeriod}분`);
-        
-        // 전체 교시 시간 통계
-        debugInfo('교시 시간 통계:', {
-            '전체 범위': `${Math.min(...allDurations)}-${Math.max(...allDurations)}분`,
-            '교시 개수': Object.keys(timeThresholds.periods).length + '개',
-            '평균 시간': Math.round(allDurations.reduce((a, b) => a + b, 0) / allDurations.length) + '분'
-        });
         
     } catch (error) {
         console.error('교시 정보 로드 실패:', error);
@@ -3611,8 +3585,8 @@ async function calculateTimeThresholds() {
     timeThresholds.long = q3;           // 상위 25% 기준
     timeThresholds.maxDuration = max;   // 정규화용 최대값
     
-    // custom_exam_info.json에서 교시별 시간 제한 로드
-    await loadPeriodLimitsFromExamInfo();
+    // examInfo에서 교시별 시간 제한 로드
+    loadPeriodLimitsFromExamInfo();
     
     debugInfo('계산된 시험 시간 기준값:', {
         '짧은 시험 (Q1)': timeThresholds.short + '분',
@@ -4253,15 +4227,18 @@ function updateStatistics() {
     
     // 사용 가능한 교시 수를 동적으로 계산
     const availablePeriods = new Set();
-    const datePeriods = examInfo.date_periods || {};
-    Object.values(datePeriods).forEach(dayPeriods => {
-        Object.keys(dayPeriods).forEach(periodNum => {
-            const periodData = dayPeriods[periodNum];
-            if (!periodData._deleted) {
-                availablePeriods.add(parseInt(periodNum));
+    
+    // 시험타임 데이터에서 교시 정보 추출
+    if (examInfo.시험타임) {
+        Object.keys(examInfo.시험타임).forEach(timeKey => {
+            const periodMatch = timeKey.match(/제\d+일(\d+)교시/);
+            if (periodMatch) {
+                const periodNum = parseInt(periodMatch[1]);
+                availablePeriods.add(periodNum);
             }
         });
-    });
+    }
+    
     const periodsCount = availablePeriods.size; // 완전 동적 처리
     
     const totalSlots = validDatesCount * periodsCount; // 완전 동적 처리 (하드코딩 제거)
