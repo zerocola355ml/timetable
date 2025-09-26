@@ -920,18 +920,6 @@ html, body {
                 <!-- 오른쪽: 버튼들 -->
                 <div class="col-md-6 text-end">
                     <div class="tool-buttons d-flex align-items-center justify-content-end gap-3">
-                        <!-- 최대 클리크 우선 배치 버튼 -->
-                        <button class="tool-btn tool-btn-info" type="button" id="maxCliqueBtn">
-                            <i class="fas fa-network-wired me-2"></i>
-                            최대 클리크 배치
-                        </button>
-                        
-                        <!-- 클리크 힌트 자동배치 버튼 -->
-                        <button class="tool-btn tool-btn-success" type="button" id="cliqueHintBtn">
-                            <i class="fas fa-lightbulb me-2"></i>
-                            클리크 힌트 자동배치
-                        </button>
-                        
                         <!-- 자동생성 버튼 -->
                         <button class="tool-btn tool-btn-primary" type="button" id="autoGenerateBtn">
                             <i class="fas fa-magic me-2"></i>
@@ -1131,91 +1119,110 @@ html, body {
             <div class="modal-header">
                 <h5 class="modal-title" id="autoGenerateModalLabel">
                     <i class="fas fa-magic me-2"></i>
-                    자동생성 모드 선택
+                    시험 시간표 자동 생성
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted mb-4">직접 배치한 과목은 유지하고 나머지 과목을 자동 배치 합니다다.</p>
-                
-                <!-- 빠른 모드 그룹 -->
+                <!-- 배치 모드 선택 -->
                 <div class="mb-4">
-                    <h6 class="text-muted mb-3">
-                        <i class="fas fa-bolt me-2"></i>빠른 모드
+                    <h6 class="fw-bold mb-3">
+                        <i class="fas fa-cogs me-2"></i>배치 모드 선택
                     </h6>
-                    <div class="row g-3">
-                        <!-- 빠름 -->
-                        <div class="col-md-4">
-                            <div class="card h-100 border-0 shadow-sm option-card" data-time="10" data-text="빠름">
-                                <div class="card-body text-center">
-                                    <div class="mb-3">
-                                        <i class="fas fa-rocket fa-3x text-primary"></i>
-                                    </div>
-                                    <h6 class="card-title">빠름</h6>
-                                    <small class="text-muted">10초</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 균형 -->
-                        <div class="col-md-4">
-                            <div class="card h-100 border-0 shadow-sm option-card" data-time="60" data-text="균형">
-                                <div class="card-body text-center">
-                                    <div class="mb-3">
-                                        <i class="fas fa-balance-scale fa-3x text-success"></i>
-                                    </div>
-                                    <h6 class="card-title">균형</h6>
-                                    <small class="text-muted">1분</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 고품질 -->
-                        <div class="col-md-4">
-                            <div class="card h-100 border-0 shadow-sm option-card" data-time="120" data-text="고품질">
-                                <div class="card-body text-center">
-                                    <div class="mb-3">
-                                        <i class="fas fa-star fa-3x text-warning"></i>
-                                    </div>
-                                    <h6 class="card-title">고품질</h6>
-                                    <small class="text-muted">2분</small>
-                                </div>
-                            </div>
-                        </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="placementMode" 
+                               id="standardMode" value="standard" checked>
+                        <label class="form-check-label" for="standardMode">
+                            <strong>표준 배치</strong>
+                            <small class="text-muted d-block">기본 알고리즘으로 빠르게 생성</small>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="placementMode" 
+                               id="smartMode" value="smart">
+                        <label class="form-check-label" for="smartMode">
+                            <strong>스마트 배치</strong>
+                            <small class="text-muted d-block">충돌 분석을 통한 최적화된 생성</small>
+                        </label>
                     </div>
                 </div>
                 
-                <!-- 사용자 설정 그룹 -->
-                <div class="mb-3">
-                    <h6 class="text-muted mb-3">
-                        <i class="fas fa-sliders-h me-2"></i>사용자 설정
+                <!-- 시간 설정 -->
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="fas fa-clock me-2"></i>시간 설정
                     </h6>
-                    <div class="card border-0 shadow-sm option-card" data-time="custom" data-text="사용자 설정">
-                        <div class="card-body text-center">
-                            <div class="mb-3">
-                                <i class="fas fa-cog fa-3x text-info"></i>
+                    
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="timeLimit" 
+                                       id="fastMode" value="10">
+                                <label class="form-check-label" for="fastMode">
+                                    <i class="fas fa-bolt text-warning me-1"></i>빠름 (10초)
+                                </label>
                             </div>
-                            <h6 class="card-title">직접 설정</h6>
-                            <small class="text-muted">5-300초 범위</small>
                         </div>
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="timeLimit" 
+                                       id="balancedMode" value="60">
+                                <label class="form-check-label" for="balancedMode">
+                                    <i class="fas fa-balance-scale text-info me-1"></i>균형 (60초)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="timeLimit" 
+                                       id="qualityMode" value="120">
+                                <label class="form-check-label" for="qualityMode">
+                                    <i class="fas fa-gem text-success me-1"></i>고품질 (120초)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="timeLimit" 
+                                       id="customMode" value="custom">
+                                <label class="form-check-label" for="customMode">
+                                    <i class="fas fa-cog text-secondary me-1"></i>사용자 설정
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 사용자 설정 입력 -->
+                    <div id="customTimeInput" class="mt-2" style="display: none;">
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="customTimeValue" 
+                                   min="5" max="600" placeholder="초">
+                            <span class="input-group-text">초</span>
+                        </div>
+                        <small class="text-muted">5초 ~ 600초 사이로 설정하세요</small>
                     </div>
                 </div>
                 
-                <!-- 사용자 설정 입력 (숨김) -->
-                <div id="customTimeInput" class="mt-3" style="display: none;">
-                    <label for="customTimeValue" class="form-label">생성 시간 (초)</label>
-                    <div class="input-group">
-                        <input type="number" class="form-control" id="customTimeValue" min="5" max="300" value="120" placeholder="120">
-                        <span class="input-group-text">초</span>
-                    </div>
-                    <small class="text-muted">5초부터 300초까지 설정 가능합니다.</small>
+                <!-- 스마트 배치 설명 -->
+                <div id="smartModeInfo" class="alert alert-info" style="display: none;">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-lightbulb me-2"></i>스마트 배치란?
+                    </h6>
+                    <p class="mb-0">
+                        충돌이 많은 과목들을 먼저 분석하여 최적의 배치를 찾습니다. 
+                        일반적으로 더 나은 시간표를 생성하지만 약간 더 오래 걸릴 수 있습니다.
+                    </p>
                 </div>
             </div>
+            
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary" id="confirmAutoGenerate" disabled>
-                    <i class="fas fa-magic me-2"></i>
-                    자동생성 시작
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>취소
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmAutoGenerate">
+                    <i class="fas fa-magic me-2"></i>생성하기
                 </button>
             </div>
         </div>
@@ -4266,165 +4273,83 @@ function updateStatistics() {
     document.getElementById('sidebarTotalCount').textContent = totalSubjects;
 }
 
-// 최대 클리크 배치 버튼 이벤트
-document.getElementById('maxCliqueBtn').addEventListener('click', async function() {
-    await executeMaxCliquePlacement();
+// 새로운 모달 이벤트 리스너들
+document.getElementById('smartMode').addEventListener('change', function() {
+    document.getElementById('smartModeInfo').style.display = 
+        this.checked ? 'block' : 'none';
 });
 
-// 클리크 힌트 자동배치 버튼 이벤트
-document.getElementById('cliqueHintBtn').addEventListener('click', async function() {
-    await executeCliqueHintAutoSchedule();
+document.getElementById('customMode').addEventListener('change', function() {
+    document.getElementById('customTimeInput').style.display = 
+        this.checked ? 'block' : 'none';
 });
 
-// 통합 자동생성 드롭다운 이벤트
+// 시간 제한 기본값 설정 (빠름 모드)
+document.getElementById('fastMode').checked = true;
+
 // 자동생성 버튼 이벤트
 document.getElementById('autoGenerateBtn').addEventListener('click', function() {
     const modal = new bootstrap.Modal(document.getElementById('autoGenerateModal'));
     modal.show();
 });
 
-// 모달 내 옵션 카드 선택 이벤트
-document.addEventListener('click', function(e) {
-    if (e.target.closest('.option-card')) {
-        const card = e.target.closest('.option-card');
-        const timeValue = card.getAttribute('data-time');
-        const timeText = card.getAttribute('data-text');
-        
-        // 모든 카드에서 선택 상태 제거
-        document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-        
-        // 선택된 카드에 선택 상태 추가
-        card.classList.add('selected');
-        
-        // 사용자 설정 입력 표시/숨김
-        const customInput = document.getElementById('customTimeInput');
-        if (timeValue === 'custom') {
-            customInput.style.display = 'block';
-        } else {
-            customInput.style.display = 'none';
-        }
-        
-        // 확인 버튼 활성화
-        document.getElementById('confirmAutoGenerate').disabled = false;
-    }
-});
-
-// 확인 버튼 이벤트
+// 모달 확인 버튼 이벤트
 document.getElementById('confirmAutoGenerate').addEventListener('click', function() {
-    const selectedCard = document.querySelector('.option-card.selected');
-    if (!selectedCard) return;
+    const placementMode = document.querySelector('input[name="placementMode"]:checked').value;
+    const timeLimit = getSelectedTimeLimit();
     
-    const timeValue = selectedCard.getAttribute('data-time');
-    let timeLimit;
-    
-    if (timeValue === 'custom') {
-        const customTime = document.getElementById('customTimeValue').value;
-        timeLimit = parseInt(customTime);
-        
-        if (timeLimit < 5 || timeLimit > 300) {
-            alert('5초부터 300초까지 입력해주세요.');
-            return;
-        }
-    } else {
-        timeLimit = parseInt(timeValue);
+    if (!timeLimit) {
+        showAlert('시간 설정을 선택해주세요.', 'warning');
+        return;
     }
     
     // 모달 닫기
     const modal = bootstrap.Modal.getInstance(document.getElementById('autoGenerateModal'));
     modal.hide();
     
-    // 자동생성 실행
-    executeAutoGenerate(timeLimit);
+    // 선택된 모드에 따라 다른 API 호출
+    if (placementMode === 'smart') {
+        executeSmartAutoSchedule(timeLimit);
+    } else {
+        executeAutoGenerate(timeLimit);
+    }
 });
 
-// 최대 클리크 배치 실행 함수
-async function executeMaxCliquePlacement() {
-    try {
-        showLoading('최대 클리크 배치', '충돌 그래프를 분석하고 최대 클리크 과목들을 배치하고 있습니다...', true);
-        
-        // 백엔드 API 호출
-        const response = await fetch('/api/max-clique-placement', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            // 성공 시 결과 처리
-            await handleMaxCliqueSuccess(result);
-        } else {
-            hideLoading();
-            showAlert('최대 클리크 배치에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'danger');
+// 선택된 시간 제한 가져오기 함수
+function getSelectedTimeLimit() {
+    const selectedTime = document.querySelector('input[name="timeLimit"]:checked');
+    if (!selectedTime) return null;
+    
+    if (selectedTime.value === 'custom') {
+        const customValue = parseInt(document.getElementById('customTimeValue').value);
+        if (!customValue || customValue < 5 || customValue > 600) {
+            return null;
         }
-    } catch (error) {
-        console.error('최대 클리크 배치 오류:', error);
-        hideLoading();
-        showAlert('네트워크 오류가 발생했습니다.', 'danger');
+        return customValue;
+    } else {
+        return parseInt(selectedTime.value);
     }
 }
 
-// 최대 클리크 배치 성공 처리
-async function handleMaxCliqueSuccess(result) {
-    try {
-        updateProgress(90, '결과를 처리하는 중...');
-        
-        // 서버 응답에서 받은 데이터를 scheduleData에 저장
-        scheduleData = result.updated_schedule;
-        
-        updateProgress(95, '결과를 저장하는 중...');
-        
-        // 최대 클리크 배치 결과를 manual_schedule.json에 저장
-        await saveManualSchedule('max_clique_placement');
-        
-        updateProgress(98, 'UI 업데이트 중...');
-        
-        // UI 업데이트
-        renderScheduleGrid();
-        renderSubjectList();
-        updateStatistics();
-        updateRecommendationBanner();
-        
-        // 학생 부담 분석 업데이트
-        if (!document.getElementById('burdenPanelBody').classList.contains('collapsed')) {
-            renderStudentBurdenAnalysis();
-        }
-        
-        updateProgress(100, '완료!');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        hideLoading();
-        
-        // 상세 결과 표시
-        const placedCount = result.placed_subjects ? Object.keys(result.placed_subjects).length : 0;
-        const unplacedCount = result.unplaced_subjects ? result.unplaced_subjects.length : 0;
-        const cliqueInfo = result.clique_info;
-        
-        let message = `최대 클리크 배치가 완료되었습니다!\n`;
-        message += `• 클리크 크기: ${cliqueInfo.max_clique ? cliqueInfo.max_clique.length : 0}개 과목\n`;
-        message += `• 배치 완료: ${placedCount}개 과목\n`;
-        message += `• 배치 실패: ${unplacedCount}개 과목`;
-        
-        if (unplacedCount > 0) {
-            message += `\n\n배치되지 않은 과목:\n${result.unplaced_subjects.join(', ')}`;
-        }
-        
-        showDetailedAlert('최대 클리크 배치 완료', message, 
-                         `충돌 그래프 분석 결과:\n• 전체 노드: ${cliqueInfo.conflict_graph.nodes}개\n• 충돌 엣지: ${cliqueInfo.conflict_graph.edges}개\n• 최대 클리크 크기: ${cliqueInfo.conflict_graph.max_size}개`, 
-                         'success');
-        
-    } catch (error) {
-        console.error('최대 클리크 배치 성공 처리 오류:', error);
-        hideLoading();
-        showAlert('결과 처리 중 오류가 발생했습니다.', 'danger');
-    }
-}
 
-// 클리크 힌트 자동배치 실행 함수
-async function executeCliqueHintAutoSchedule(timeLimit = 10) {
+// 스마트 자동배치 실행 함수 (클리크 힌트 사용)
+async function executeSmartAutoSchedule(timeLimit = 10) {
     try {
         const timeText = getTimeLimitText(timeLimit);
-        showLoading('클리크 힌트 자동배치', `최대 클리크를 힌트로 사용하여 ${timeText} 모드로 최적의 시험 시간표를 생성하고 있습니다...`, true);
+        showLoading('스마트 배치', `충돌 분석을 통한 최적화된 ${timeText} 모드로 시험 시간표를 생성하고 있습니다...`, true);
+        
+        // 실시간 진행 상황 폴링 시작
+        let statusInterval = setInterval(async () => {
+            try {
+                const statusResponse = await fetch('/api/schedule-status');
+                const statusData = await statusResponse.json();
+                
+                // 진행 상황 업데이트
+                updateProgress(statusData.progress || 0, statusData.step || '처리 중...');
+            } catch (error) {
+                console.error('Status polling error:', error);
+            }
+        }, 1000); // 1초마다 상태 확인
         
         // 백엔드 API 호출
         const response = await fetch('/api/schedule-with-clique-hint', {
@@ -4435,22 +4360,25 @@ async function executeCliqueHintAutoSchedule(timeLimit = 10) {
         
         const result = await response.json();
         
+        // 폴링 중지
+        clearInterval(statusInterval);
+        
         if (result.success) {
             // 성공 시 결과 처리
-            await handleCliqueHintSuccess(result);
+            await handleSmartAutoSuccess(result);
         } else {
             hideLoading();
-            showAlert('클리크 힌트 자동배치에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'danger');
+            showAlert('스마트 배치에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'danger');
         }
     } catch (error) {
-        console.error('클리크 힌트 자동배치 오류:', error);
+        console.error('스마트 자동배치 오류:', error);
         hideLoading();
         showAlert('네트워크 오류가 발생했습니다.', 'danger');
     }
 }
 
-// 클리크 힌트 자동배치 성공 처리
-async function handleCliqueHintSuccess(result) {
+// 스마트 자동배치 성공 처리
+async function handleSmartAutoSuccess(result) {
     try {
         updateProgress(90, '결과를 처리하는 중...');
         
@@ -4459,8 +4387,8 @@ async function handleCliqueHintSuccess(result) {
         
         updateProgress(95, '결과를 저장하는 중...');
         
-        // 클리크 힌트 자동배치 결과를 manual_schedule.json에 저장
-        await saveManualSchedule('clique_hint_automatic');
+        // 스마트 자동배치 결과를 manual_schedule.json에 저장
+        await saveManualSchedule('smart_automatic');
         
         updateProgress(98, 'UI 업데이트 중...');
         
@@ -4482,16 +4410,16 @@ async function handleCliqueHintSuccess(result) {
         
         // 상세 결과 표시
         const cliqueInfo = result.clique_info;
-        let message = `클리크 힌트 자동배치가 완료되었습니다!\n`;
+        let message = `스마트 배치가 완료되었습니다!\n`;
         message += `• 클리크 크기: ${cliqueInfo.max_clique_size}개 과목\n`;
         message += `• 힌트로 사용된 과목: ${cliqueInfo.placed_as_hints}개`;
         
-        showDetailedAlert('클리크 힌트 자동배치 완료', message, 
+        showDetailedAlert('스마트 배치 완료', message, 
                          `클리크 힌트 정보:\n• 클리크 과목: ${cliqueInfo.max_clique_subjects ? cliqueInfo.max_clique_subjects.join(', ') : '없음'}\n• 힌트 배치: ${Object.keys(cliqueInfo.clique_placements || {}).length}개 과목`, 
                          'success');
         
     } catch (error) {
-        console.error('클리크 힌트 자동배치 성공 처리 오류:', error);
+        console.error('스마트 자동배치 성공 처리 오류:', error);
         hideLoading();
         showAlert('결과 처리 중 오류가 발생했습니다.', 'danger');
     }
@@ -4904,3 +4832,4 @@ async function clearManualSchedule() {
 
 </script>
 {% endblock %}
+

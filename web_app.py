@@ -3476,8 +3476,20 @@ def place_maximum_clique():
 @app.route('/api/schedule-with-clique-hint', methods=['POST'])
 def schedule_with_clique_hint():
     """클리크를 초기 해로 사용하여 자동배치를 실행하는 API"""
+    global schedule_status
+    
     try:
         logger.info("Schedule with clique hint request received")
+        
+        # 상태 초기화
+        with schedule_lock:
+            schedule_status.update({
+                "step": "요청을 처리하고 있습니다...",
+                "progress": 5,
+                "is_running": True,
+                "result": None,
+                "error": None
+            })
         
         # 현재 수동 배치 상태 로드
         current_assignments = {}
@@ -3498,7 +3510,15 @@ def schedule_with_clique_hint():
         scheduler_app = ExamSchedulerApp(data_dir=UPLOAD_FOLDER)
         
         # 모든 데이터 로드
+        with schedule_lock:
+            schedule_status["step"] = "데이터를 로드하고 있습니다..."
+            schedule_status["progress"] = 20
+            
         if not scheduler_app.load_all_data():
+            with schedule_lock:
+                schedule_status["step"] = "데이터 로드 실패"
+                schedule_status["is_running"] = False
+                schedule_status["error"] = "데이터 로드에 실패했습니다."
             return jsonify({
                 'success': False,
                 'error': '필요한 데이터 파일을 로드할 수 없습니다.'
@@ -3540,6 +3560,11 @@ def schedule_with_clique_hint():
         logger.debug(f"Created {len(slots)} slots")
         
         # 클리크 힌트를 사용한 스케줄 생성
+        def update_status(step, progress):
+            with schedule_lock:
+                schedule_status["step"] = step
+                schedule_status["progress"] = progress
+        
         status, result = scheduler.create_schedule_with_clique_hint(
             scheduler_app.subject_info_dict,
             scheduler_app.student_conflict_dict,
@@ -3556,10 +3581,17 @@ def schedule_with_clique_hint():
             scheduler_app.subject_conflicts,
             current_assignments,
             time_limit,
-            None  # status_callback은 웹에서는 사용하지 않음
+            update_status  # status_callback 추가
         )
         
         if status == "SUCCESS":
+            # 완료 상태 업데이트
+            with schedule_lock:
+                schedule_status["step"] = "완료"
+                schedule_status["progress"] = 100
+                schedule_status["is_running"] = False
+                schedule_status["result"] = "success"
+            
             # 결과 저장
             schedule_data = {
                 'slot_assignments': result['slot_assignments'],
@@ -3584,6 +3616,13 @@ def schedule_with_clique_hint():
                 'clique_info': clique_info
             })
         else:
+            # 실패 상태 업데이트
+            with schedule_lock:
+                schedule_status["step"] = "생성 실패"
+                schedule_status["is_running"] = False
+                schedule_status["error"] = status
+                schedule_status["progress"] = 100
+            
             return jsonify({
                 'success': False,
                 'error': result.get('error', '스케줄 생성에 실패했습니다.'),
@@ -3591,6 +3630,13 @@ def schedule_with_clique_hint():
             }), 400
             
     except Exception as e:
+        # 예외 발생시 상태 업데이트
+        with schedule_lock:
+            schedule_status["step"] = "오류 발생"
+            schedule_status["is_running"] = False
+            schedule_status["error"] = str(e)
+            schedule_status["progress"] = 100
+        
         logger.error(f"Schedule with clique hint error: {e}")
         logger.error(traceback.format_exc())
         return jsonify({
