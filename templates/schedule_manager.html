@@ -1137,8 +1137,8 @@ html, body {
                             <strong>표준 배치</strong>
                             <small class="text-muted d-block">기본 알고리즘으로 빠르게 생성</small>
                         </label>
-                    </div>
-                    
+                        </div>
+                        
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="radio" name="placementMode" 
                                id="smartMode" value="smart">
@@ -1146,9 +1146,9 @@ html, body {
                             <strong>스마트 배치</strong>
                             <small class="text-muted d-block">충돌 분석을 통한 최적화된 생성</small>
                         </label>
-                    </div>
-                </div>
-                
+                            </div>
+                        </div>
+                        
                 <!-- 시간 설정 -->
                 <div class="mb-4">
                     <h6 class="fw-bold mb-3">
@@ -1163,8 +1163,8 @@ html, body {
                                 <label class="form-check-label" for="fastMode">
                                     <i class="fas fa-bolt text-warning me-1"></i>빠름 (10초)
                                 </label>
-                            </div>
-                        </div>
+                                    </div>
+                                </div>
                         <div class="col-6">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="timeLimit" 
@@ -1181,8 +1181,8 @@ html, body {
                                 <label class="form-check-label" for="qualityMode">
                                     <i class="fas fa-gem text-success me-1"></i>고품질 (120초)
                                 </label>
-                            </div>
-                        </div>
+                    </div>
+                </div>
                         <div class="col-6">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="timeLimit" 
@@ -1190,20 +1190,19 @@ html, body {
                                 <label class="form-check-label" for="customMode">
                                     <i class="fas fa-cog text-secondary me-1"></i>사용자 설정
                                 </label>
-                            </div>
                         </div>
                     </div>
-                    
+                </div>
+                
                     <!-- 사용자 설정 입력 -->
                     <div id="customTimeInput" class="mt-2" style="display: none;">
                         <div class="input-group">
                             <input type="number" class="form-control" id="customTimeValue" 
-                                   min="5" max="600" placeholder="초">
+                                   min="5" max="600" placeholder="5~600 사이 값 입력하세요">
                             <span class="input-group-text">초</span>
                         </div>
-                        <small class="text-muted">5초 ~ 600초 사이로 설정하세요</small>
                     </div>
-                </div>
+            </div>
                 
                 <!-- 스마트 배치 설명 -->
                 <div id="smartModeInfo" class="alert alert-info" style="display: none;">
@@ -4279,19 +4278,54 @@ document.getElementById('smartMode').addEventListener('change', function() {
         this.checked ? 'block' : 'none';
 });
 
-document.getElementById('customMode').addEventListener('change', function() {
-    document.getElementById('customTimeInput').style.display = 
-        this.checked ? 'block' : 'none';
-});
+// 모든 시간 옵션에 이벤트 리스너 추가
+function setupTimeLimitListeners() {
+    const timeInput = document.getElementById('customTimeInput');
+    
+    // 빠름, 균형, 고품질 옵션들 - 사용자 설정 입력 숨기기
+    ['fastMode', 'balancedMode', 'qualityMode'].forEach(id => {
+        document.getElementById(id).addEventListener('change', function() {
+            if (this.checked) {
+                timeInput.style.display = 'none';
+            }
+        });
+    });
+    
+    // 사용자 설정 옵션 - 사용자 설정 입력 보이기
+    document.getElementById('customMode').addEventListener('change', function() {
+        timeInput.style.display = this.checked ? 'block' : 'none';
+    });
+}
+
+// 이벤트 리스너 설정
+setupTimeLimitListeners();
 
 // 시간 제한 기본값 설정 (빠름 모드)
 document.getElementById('fastMode').checked = true;
 
 // 자동생성 버튼 이벤트
 document.getElementById('autoGenerateBtn').addEventListener('click', function() {
+    // 모달 열 때 초기 상태로 리셋
+    resetModalState();
+    
     const modal = new bootstrap.Modal(document.getElementById('autoGenerateModal'));
     modal.show();
 });
+
+// 모달 상태 초기화 함수
+function resetModalState() {
+    // 기본값으로 빠름 모드 선택
+    document.getElementById('fastMode').checked = true;
+    
+    // 사용자 설정 입력 숨기기
+    document.getElementById('customTimeInput').style.display = 'none';
+    
+    // 스마트 배치 설명 숨기기
+    document.getElementById('smartModeInfo').style.display = 'none';
+    
+    // 표준 배치 선택 (기본값)
+    document.getElementById('standardMode').checked = true;
+}
 
 // 모달 확인 버튼 이벤트
 document.getElementById('confirmAutoGenerate').addEventListener('click', function() {
@@ -4300,7 +4334,7 @@ document.getElementById('confirmAutoGenerate').addEventListener('click', functio
     
     if (!timeLimit) {
         showAlert('시간 설정을 선택해주세요.', 'warning');
-        return;
+            return;
     }
     
     // 모달 닫기
@@ -4310,8 +4344,8 @@ document.getElementById('confirmAutoGenerate').addEventListener('click', functio
     // 선택된 모드에 따라 다른 API 호출
     if (placementMode === 'smart') {
         executeSmartAutoSchedule(timeLimit);
-    } else {
-        executeAutoGenerate(timeLimit);
+        } else {
+    executeAutoGenerate(timeLimit);
     }
 });
 
@@ -4366,7 +4400,7 @@ async function executeSmartAutoSchedule(timeLimit = 10) {
         if (result.success) {
             // 성공 시 결과 처리
             await handleSmartAutoSuccess(result);
-        } else {
+    } else {
             hideLoading();
             showAlert('스마트 배치에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'danger');
         }
