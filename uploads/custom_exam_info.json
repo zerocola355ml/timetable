@@ -25,11 +25,6 @@
         "start_time": "10:30",
         "duration": "100",
         "end_time": "12:10"
-      },
-      "4": {
-        "start_time": "11:30",
-        "duration": 50,
-        "end_time": "12:20"
       }
     },
     "2": {
@@ -47,11 +42,6 @@
         "start_time": "10:30",
         "duration": 100,
         "end_time": "12:10"
-      },
-      "4": {
-        "start_time": "11:30",
-        "duration": 50,
-        "end_time": "12:20"
       }
     },
     "3": {
@@ -69,11 +59,6 @@
         "start_time": "10:30",
         "duration": 100,
         "end_time": "12:10"
-      },
-      "4": {
-        "start_time": "11:30",
-        "duration": 50,
-        "end_time": "12:20"
       }
     },
     "4": {
@@ -91,11 +76,6 @@
         "start_time": "10:30",
         "duration": 100,
         "end_time": "12:10"
-      },
-      "4": {
-        "start_time": "11:30",
-        "duration": 50,
-        "end_time": "12:20"
       }
     },
     "5": {
@@ -113,11 +93,6 @@
         "start_time": "10:30",
         "duration": 100,
         "end_time": "12:10"
-      },
-      "4": {
-        "start_time": "11:30",
-        "duration": 50,
-        "end_time": "12:20"
       }
     }
   }

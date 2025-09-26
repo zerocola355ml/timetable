@@ -3325,5 +3325,153 @@ def clear_manual_schedule():
         }), 500
 
 
+@app.route('/api/max-clique-placement', methods=['POST'])
+def place_maximum_clique():
+    """최대 클리크 과목들을 우선 배치하는 API"""
+    try:
+        logger.info("Maximum clique placement request received")
+        
+        # 현재 수동 배치 상태 로드
+        current_assignments = {}
+        manual_schedule_file = os.path.join(UPLOAD_FOLDER, 'manual_schedule.json')
+        if os.path.exists(manual_schedule_file):
+            with open(manual_schedule_file, 'r', encoding='utf-8') as f:
+                schedule_data = json.load(f)
+                current_assignments = schedule_data.get('slot_assignments', {})
+        
+        logger.debug(f"Current assignments: {current_assignments}")
+        
+        # 데이터 로더 초기화
+        data_loader = DataLoader(UPLOAD_FOLDER)
+        scheduler_app = ExamSchedulerApp(data_dir=UPLOAD_FOLDER)
+        
+        # 모든 데이터 로드
+        if not scheduler_app.load_all_data():
+            return jsonify({
+                'success': False,
+                'error': '필요한 데이터 파일을 로드할 수 없습니다.'
+            }), 400
+        
+        # 스케줄러 초기화
+        scheduler = scheduler_app.scheduler
+        
+        # config 정보 확인 및 수정 - 확실하게 ExamSchedulingConfig 객체 생성
+        from config import ExamSchedulingConfig
+        logger.debug(f"Original scheduler.config type: {type(scheduler.config)}")
+        
+        # 새로운 config 객체 생성 (기본값 사용)
+        new_config = ExamSchedulingConfig()
+        scheduler.config = new_config
+        
+        logger.debug(f"New scheduler.config type: {type(scheduler.config)}")
+        logger.debug(f"max_exams_per_day: {scheduler.config.max_exams_per_day}")
+        logger.debug(f"max_hard_exams_per_day: {scheduler.config.max_hard_exams_per_day}")
+        
+        # 학생 부담 설정이 있는지 확인하고 적용
+        try:
+            burden_config_file = os.path.join(UPLOAD_FOLDER, 'student_burden_config.json')
+            if os.path.exists(burden_config_file):
+                with open(burden_config_file, 'r', encoding='utf-8') as f:
+                    burden_config = json.load(f)
+                    if 'max_exams_per_day' in burden_config:
+                        scheduler.config.max_exams_per_day = burden_config['max_exams_per_day']
+                    if 'max_hard_exams_per_day' in burden_config:
+                        scheduler.config.max_hard_exams_per_day = burden_config['max_hard_exams_per_day']
+                    logger.debug(f"Applied burden config: max_exams_per_day={scheduler.config.max_exams_per_day}, max_hard_exams_per_day={scheduler.config.max_hard_exams_per_day}")
+        except Exception as e:
+            logger.debug(f"Could not load burden config: {e}")
+        
+        # 슬롯 생성
+        slots = scheduler.create_slots(scheduler_app.exam_info)
+        slot_to_day, slot_to_period_limit = scheduler.create_slot_mappings(slots, scheduler_app.exam_info)
+        
+        logger.debug(f"Created {len(slots)} slots")
+        
+        # 최대 클리크 찾기
+        clique_result = scheduler.find_maximum_cliques(
+            scheduler_app.subject_info_dict,
+            scheduler_app.student_conflict_dict,
+            scheduler_app.listening_conflict_dict,
+            scheduler_app.teacher_conflict_dict,
+            current_assignments
+        )
+        
+        max_clique = clique_result['max_clique']
+        conflict_graph = clique_result['conflict_graph']
+        
+        logger.info(f"Found maximum clique with {len(max_clique)} subjects: {max_clique}")
+        logger.info(f"Conflict graph: {conflict_graph}")
+        
+        if not max_clique:
+            return jsonify({
+                'success': False,
+                'error': '배치 가능한 최대 클리크를 찾을 수 없습니다.',
+                'clique_info': clique_result
+            }), 400
+        
+        # 클리크 과목들 배치
+        placement_result = scheduler.place_clique_subjects(
+            max_clique,
+            scheduler_app.subject_info_dict,
+            slots,
+            slot_to_period_limit,
+            scheduler_app.teacher_unavailable_dates,
+            scheduler_app.subject_constraints,
+            scheduler_app.teacher_slot_constraints,
+            current_assignments,
+            scheduler_app.student_conflict_dict,
+            scheduler_app.listening_conflict_dict,
+            scheduler_app.teacher_conflict_dict,
+            scheduler_app.student_subjects,
+            slot_to_day,
+            scheduler_app.hard_subjects
+        )
+        
+        placed_subjects = placement_result['placed_subjects']
+        unplaced_subjects = placement_result['unplaced_subjects']
+        placement_details = placement_result['placement_details']
+        updated_assignments = placement_result['updated_assignments']
+        
+        logger.info(f"Placement completed: {len(placed_subjects)} placed, {len(unplaced_subjects)} unplaced")
+        
+        # 결과 저장
+        schedule_data = {
+            'slot_assignments': updated_assignments,
+            'metadata': {
+                'last_modified': datetime.now().isoformat(),
+                'created_by': 'max_clique_placement',
+                'version': '1.0',
+                'clique_info': {
+                    'max_clique_size': len(max_clique),
+                    'max_clique_subjects': max_clique,
+                    'placed_count': len(placed_subjects),
+                    'unplaced_count': len(unplaced_subjects),
+                    'conflict_graph': conflict_graph
+                }
+            }
+        }
+        
+        with open(manual_schedule_file, 'w', encoding='utf-8') as f:
+            json.dump(schedule_data, f, ensure_ascii=False, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'message': f'최대 클리크 배치 완료: {len(placed_subjects)}개 배치, {len(unplaced_subjects)}개 미배치',
+            'placed_subjects': placed_subjects,
+            'unplaced_subjects': unplaced_subjects,
+            'placement_details': placement_details,
+            'clique_info': clique_result,
+            'updated_schedule': updated_assignments
+        })
+        
+    except Exception as e:
+        logger.error(f"Maximum clique placement error: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'최대 클리크 배치 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 

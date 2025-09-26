@@ -920,6 +920,12 @@ html, body {
                 <!-- 오른쪽: 버튼들 -->
                 <div class="col-md-6 text-end">
                     <div class="tool-buttons d-flex align-items-center justify-content-end gap-3">
+                        <!-- 최대 클리크 우선 배치 버튼 -->
+                        <button class="tool-btn tool-btn-info" type="button" id="maxCliqueBtn">
+                            <i class="fas fa-network-wired me-2"></i>
+                            최대 클리크 배치
+                        </button>
+                        
                         <!-- 자동생성 버튼 -->
                         <button class="tool-btn tool-btn-primary" type="button" id="autoGenerateBtn">
                             <i class="fas fa-magic me-2"></i>
@@ -4254,6 +4260,11 @@ function updateStatistics() {
     document.getElementById('sidebarTotalCount').textContent = totalSubjects;
 }
 
+// 최대 클리크 배치 버튼 이벤트
+document.getElementById('maxCliqueBtn').addEventListener('click', async function() {
+    await executeMaxCliquePlacement();
+});
+
 // 통합 자동생성 드롭다운 이벤트
 // 자동생성 버튼 이벤트
 document.getElementById('autoGenerateBtn').addEventListener('click', function() {
@@ -4314,6 +4325,89 @@ document.getElementById('confirmAutoGenerate').addEventListener('click', functio
     // 자동생성 실행
     executeAutoGenerate(timeLimit);
 });
+
+// 최대 클리크 배치 실행 함수
+async function executeMaxCliquePlacement() {
+    try {
+        showLoading('최대 클리크 배치', '충돌 그래프를 분석하고 최대 클리크 과목들을 배치하고 있습니다...', true);
+        
+        // 백엔드 API 호출
+        const response = await fetch('/api/max-clique-placement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 성공 시 결과 처리
+            await handleMaxCliqueSuccess(result);
+        } else {
+            hideLoading();
+            showAlert('최대 클리크 배치에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'danger');
+        }
+    } catch (error) {
+        console.error('최대 클리크 배치 오류:', error);
+        hideLoading();
+        showAlert('네트워크 오류가 발생했습니다.', 'danger');
+    }
+}
+
+// 최대 클리크 배치 성공 처리
+async function handleMaxCliqueSuccess(result) {
+    try {
+        updateProgress(90, '결과를 처리하는 중...');
+        
+        // 서버 응답에서 받은 데이터를 scheduleData에 저장
+        scheduleData = result.updated_schedule;
+        
+        updateProgress(95, '결과를 저장하는 중...');
+        
+        // 최대 클리크 배치 결과를 manual_schedule.json에 저장
+        await saveManualSchedule('max_clique_placement');
+        
+        updateProgress(98, 'UI 업데이트 중...');
+        
+        // UI 업데이트
+        renderScheduleGrid();
+        renderSubjectList();
+        updateStatistics();
+        updateRecommendationBanner();
+        
+        // 학생 부담 분석 업데이트
+        if (!document.getElementById('burdenPanelBody').classList.contains('collapsed')) {
+            renderStudentBurdenAnalysis();
+        }
+        
+        updateProgress(100, '완료!');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        hideLoading();
+        
+        // 상세 결과 표시
+        const placedCount = result.placed_subjects ? Object.keys(result.placed_subjects).length : 0;
+        const unplacedCount = result.unplaced_subjects ? result.unplaced_subjects.length : 0;
+        const cliqueInfo = result.clique_info;
+        
+        let message = `최대 클리크 배치가 완료되었습니다!\n`;
+        message += `• 클리크 크기: ${cliqueInfo.max_clique ? cliqueInfo.max_clique.length : 0}개 과목\n`;
+        message += `• 배치 완료: ${placedCount}개 과목\n`;
+        message += `• 배치 실패: ${unplacedCount}개 과목`;
+        
+        if (unplacedCount > 0) {
+            message += `\n\n배치되지 않은 과목:\n${result.unplaced_subjects.join(', ')}`;
+        }
+        
+        showDetailedAlert('최대 클리크 배치 완료', message, 
+                         `충돌 그래프 분석 결과:\n• 전체 노드: ${cliqueInfo.conflict_graph.nodes}개\n• 충돌 엣지: ${cliqueInfo.conflict_graph.edges}개\n• 최대 클리크 크기: ${cliqueInfo.conflict_graph.max_size}개`, 
+                         'success');
+        
+    } catch (error) {
+        console.error('최대 클리크 배치 성공 처리 오류:', error);
+        hideLoading();
+        showAlert('결과 처리 중 오류가 발생했습니다.', 'danger');
+    }
+}
 
 // 자동생성 실행 함수
 function executeAutoGenerate(timeLimit) {

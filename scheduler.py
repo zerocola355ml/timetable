@@ -7,6 +7,8 @@ from typing import Dict, List, Any, Tuple, Optional
 import pandas as pd
 import re
 import time
+import random
+import networkx as nx
 from config import ExamSchedulingConfig
 from logger_config import get_logger
 
@@ -886,4 +888,394 @@ class ExamScheduler:
                 else:
                     self.logger.warning(f"Cannot fix assignment - {subject} to {slot_id} (subject or slot not found in model)")
         
-        self.logger.debug(f"Fixed assignment constraints added successfully") 
+        self.logger.debug(f"Fixed assignment constraints added successfully")
+    
+    def find_maximum_cliques(self, 
+                            subject_info_dict: Dict[str, Any],
+                            student_conflict_dict: Dict[str, List[str]],
+                            listening_conflict_dict: Dict[str, List[str]],
+                            teacher_conflict_dict: Dict[str, List[str]],
+                            fixed_assignments: Dict[str, List[str]] = None) -> Dict[str, Any]:
+        """
+        충돌 데이터를 바탕으로 최대 클리크를 찾습니다.
+        
+        Args:
+            subject_info_dict: 과목 정보 딕셔너리
+            student_conflict_dict: 학생 충돌 딕셔너리
+            listening_conflict_dict: 듣기평가 충돌 딕셔너리
+            teacher_conflict_dict: 교사 충돌 딕셔너리
+            fixed_assignments: 이미 배치된 과목들 (제외 대상)
+            
+        Returns:
+            Dict containing:
+            - max_clique: 최대 클리크 과목 리스트
+            - all_cliques: 모든 클리크 리스트
+            - conflict_graph: 충돌 그래프 정보
+            - min_clique_size: 최소 클리크 크기
+        """
+        self.logger.debug("Starting maximum clique search...")
+        
+        # 1. 이미 배치된 과목들 제외
+        fixed_subjects = set()
+        if fixed_assignments:
+            for slot_subjects in fixed_assignments.values():
+                fixed_subjects.update(slot_subjects)
+        
+        # 2. 배치 가능한 과목들만 대상으로 함
+        available_subjects = [subject for subject in subject_info_dict.keys() 
+                            if subject not in fixed_subjects]
+        
+        if not available_subjects:
+            self.logger.warning("No available subjects for clique search")
+            return {
+                'max_clique': [],
+                'all_cliques': [],
+                'conflict_graph': {},
+                'min_clique_size': 0
+            }
+        
+        self.logger.debug(f"Available subjects for clique search: {len(available_subjects)}")
+        
+        # 3. 충돌 그래프 생성
+        G = nx.Graph()
+        G.add_nodes_from(available_subjects)
+        
+        # 4. 충돌 관계를 엣지로 추가
+        conflict_count = 0
+        for subject in available_subjects:
+            # 학생 충돌
+            for conflict in student_conflict_dict.get(subject, []):
+                if conflict in available_subjects:
+                    G.add_edge(subject, conflict)
+                    conflict_count += 1
+            
+            # 듣기평가 충돌
+            for conflict in listening_conflict_dict.get(subject, []):
+                if conflict in available_subjects:
+                    G.add_edge(subject, conflict)
+                    conflict_count += 1
+            
+            # 교사 충돌
+            for conflict in teacher_conflict_dict.get(subject, []):
+                if conflict in available_subjects:
+                    G.add_edge(subject, conflict)
+                    conflict_count += 1
+        
+        self.logger.debug(f"Conflict graph created with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges")
+        
+        # 5. 모든 최대 클리크 찾기
+        try:
+            all_max_cliques = list(nx.find_cliques(G))
+        except Exception as e:
+            self.logger.error(f"Error finding cliques: {e}")
+            return {
+                'max_clique': [],
+                'all_cliques': [],
+                'conflict_graph': {'nodes': G.number_of_nodes(), 'edges': G.number_of_edges()},
+                'min_clique_size': 0
+            }
+        
+        if not all_max_cliques:
+            self.logger.warning("No cliques found")
+            return {
+                'max_clique': [],
+                'all_cliques': [],
+                'conflict_graph': {'nodes': G.number_of_nodes(), 'edges': G.number_of_edges()},
+                'min_clique_size': 0
+            }
+        
+        # 6. 최대 크기 클리크들 찾기
+        max_size = max(len(clique) for clique in all_max_cliques)
+        max_cliques = [clique for clique in all_max_cliques if len(clique) == max_size]
+        
+        # 7. 최소 클리크 크기 계산: max(전체 과목수의 10%, 3개)
+        total_subjects = len(subject_info_dict)
+        min_clique_size = max(int(total_subjects * 0.1), 3)
+        
+        # 8. 최소 크기 이상의 클리크만 필터링
+        valid_cliques = [clique for clique in all_max_cliques if len(clique) >= min_clique_size]
+        
+        self.logger.debug(f"Found {len(all_max_cliques)} total cliques")
+        self.logger.debug(f"Found {len(max_cliques)} maximum cliques of size {max_size}")
+        self.logger.debug(f"Found {len(valid_cliques)} cliques >= min size {min_clique_size}")
+        
+        # 9. 랜덤하게 최대 클리크 선택
+        selected_max_clique = random.choice(max_cliques) if max_cliques else []
+        
+        return {
+            'max_clique': selected_max_clique,
+            'all_cliques': all_max_cliques,
+            'max_cliques': max_cliques,
+            'valid_cliques': valid_cliques,
+            'conflict_graph': {
+                'nodes': G.number_of_nodes(),
+                'edges': G.number_of_edges(),
+                'max_size': max_size,
+                'min_size': min_clique_size
+            },
+            'min_clique_size': min_clique_size
+        }
+    
+    def place_clique_subjects(self,
+                            clique_subjects: List[str],
+                            subject_info_dict: Dict[str, Any],
+                            slots: List[str],
+                            slot_to_period_limit: Dict[str, int],
+                            teacher_unavailable_dates: Dict[str, List[str]] = None,
+                            subject_constraints: Dict[str, Dict[str, Any]] = None,
+                            teacher_slot_constraints: Dict[str, Dict[str, Any]] = None,
+                            current_assignments: Dict[str, List[str]] = None,
+                            student_conflict_dict: Dict[str, List[str]] = None,
+                            listening_conflict_dict: Dict[str, List[str]] = None,
+                            teacher_conflict_dict: Dict[str, List[str]] = None,
+                            student_subjects: Dict[str, List[str]] = None,
+                            slot_to_day: Dict[str, str] = None,
+                            hard_subjects: Dict[str, bool] = None) -> Dict[str, Any]:
+        """
+        클리크 과목들을 슬롯에 배치합니다.
+        
+        Args:
+            clique_subjects: 배치할 클리크 과목들
+            subject_info_dict: 과목 정보
+            slots: 사용 가능한 슬롯들
+            slot_to_period_limit: 슬롯별 시간 제한
+            teacher_unavailable_dates: 교사 불가능 날짜
+            subject_constraints: 과목별 제약조건
+            teacher_slot_constraints: 교사 슬롯별 제약조건
+            current_assignments: 현재 배치 상태
+            
+        Returns:
+            Dict containing:
+            - placed_subjects: 배치된 과목들 {subject: slot}
+            - unplaced_subjects: 배치되지 않은 과목들
+            - placement_details: 배치 상세 정보
+        """
+        self.logger.debug(f"Starting clique placement for {len(clique_subjects)} subjects")
+        
+        if not current_assignments:
+            current_assignments = {}
+        
+        placed_subjects = {}
+        unplaced_subjects = []
+        placement_details = []
+        
+        # 이미 배치된 슬롯들 찾기 (다른 과목이 있는 슬롯)
+        occupied_slots = {slot for slot, subjects in current_assignments.items() if subjects}
+        empty_slots = [slot for slot in slots if slot not in occupied_slots]
+        
+        # 슬롯 우선순위: 이미 다른 과목이 있는 슬롯을 먼저 고려
+        slot_priority = list(occupied_slots) + empty_slots
+        
+        for subject in clique_subjects:
+            if subject not in subject_info_dict:
+                self.logger.warning(f"Subject {subject} not found in subject_info_dict")
+                unplaced_subjects.append(subject)
+                continue
+            
+            # 해당 과목이 배치 가능한 슬롯들 찾기
+            valid_slots = self._find_valid_slots_for_subject(
+                subject, subject_info_dict, slot_priority, slot_to_period_limit,
+                teacher_unavailable_dates, subject_constraints, teacher_slot_constraints,
+                current_assignments, student_conflict_dict, listening_conflict_dict, teacher_conflict_dict,
+                student_subjects, slot_to_day, hard_subjects
+            )
+            
+            if valid_slots:
+                # 랜덤하게 슬롯 선택
+                selected_slot = random.choice(valid_slots)
+                
+                # 배치 실행
+                if selected_slot not in current_assignments:
+                    current_assignments[selected_slot] = []
+                current_assignments[selected_slot].append(subject)
+                placed_subjects[subject] = selected_slot
+                
+                # 배치 상세 정보 기록
+                placement_details.append({
+                    'subject': subject,
+                    'slot': selected_slot,
+                    'valid_slots_count': len(valid_slots),
+                    'placement_strategy': 'occupied_slot' if selected_slot in occupied_slots else 'empty_slot'
+                })
+                
+                self.logger.debug(f"Placed {subject} in {selected_slot}")
+            else:
+                unplaced_subjects.append(subject)
+                placement_details.append({
+                    'subject': subject,
+                    'slot': None,
+                    'valid_slots_count': 0,
+                    'placement_strategy': 'failed'
+                })
+                self.logger.warning(f"Could not place {subject} - no valid slots")
+        
+        self.logger.debug(f"Clique placement completed: {len(placed_subjects)} placed, {len(unplaced_subjects)} unplaced")
+        
+        return {
+            'placed_subjects': placed_subjects,
+            'unplaced_subjects': unplaced_subjects,
+            'placement_details': placement_details,
+            'updated_assignments': current_assignments
+        }
+    
+    def _find_valid_slots_for_subject(self,
+                                    subject: str,
+                                    subject_info_dict: Dict[str, Any],
+                                    slot_priority: List[str],
+                                    slot_to_period_limit: Dict[str, int],
+                                    teacher_unavailable_dates: Dict[str, List[str]] = None,
+                                    subject_constraints: Dict[str, Dict[str, Any]] = None,
+                                    teacher_slot_constraints: Dict[str, Dict[str, Any]] = None,
+                                    current_assignments: Dict[str, List[str]] = None,
+                                    student_conflict_dict: Dict[str, List[str]] = None,
+                                    listening_conflict_dict: Dict[str, List[str]] = None,
+                                    teacher_conflict_dict: Dict[str, List[str]] = None,
+                                    student_subjects: Dict[str, List[str]] = None,
+                                    slot_to_day: Dict[str, str] = None,
+                                    hard_subjects: Dict[str, bool] = None) -> List[str]:
+        """
+        특정 과목이 배치 가능한 슬롯들을 찾습니다.
+        """
+        valid_slots = []
+        subject_info = subject_info_dict[subject]
+        duration = subject_info.get('시간')
+        
+        for slot in slot_priority:
+            # 1. 시간 제한 확인
+            if duration is not None and duration > slot_to_period_limit.get(slot, 0):
+                continue
+            
+            # 2. 교사 불가능 날짜 확인
+            if teacher_unavailable_dates:
+                teachers = subject_info.get('담당교사', [])
+                for teacher in teachers:
+                    if teacher in teacher_unavailable_dates and slot in teacher_unavailable_dates[teacher]:
+                        break
+                else:
+                    continue  # 모든 교사가 가능한 경우에만 계속
+            
+            # 3. 과목별 제약조건 확인
+            if subject_constraints and subject in subject_constraints:
+                slot_constraints = subject_constraints[subject]
+                standardized_slot = slot.replace('_', '')
+                if standardized_slot in slot_constraints:
+                    continue  # 제약조건에 의해 배치 불가
+            
+            # 4. 교사 슬롯별 제약조건 확인
+            if teacher_slot_constraints:
+                teachers = subject_info.get('담당교사', [])
+                for teacher in teachers:
+                    if teacher in teacher_slot_constraints:
+                        slot_constraints = teacher_slot_constraints[teacher]
+                        standardized_slot = slot.replace('_', '')
+                        if standardized_slot in slot_constraints:
+                            break  # 해당 교사가 이 슬롯에 배치 불가
+                else:
+                    continue  # 모든 교사가 가능한 경우에만 계속
+            
+            # 5. 충돌 확인 (기존 배치된 과목들과)
+            if current_assignments and slot in current_assignments:
+                existing_subjects = current_assignments[slot]
+                if not self._check_conflicts_with_existing_subjects(subject, existing_subjects, 
+                                                                   student_conflict_dict, listening_conflict_dict, teacher_conflict_dict):
+                    continue
+            
+            # 6. 학생 부담 제약조건 확인
+            if student_subjects and slot_to_day:
+                if not self._check_student_burden_constraints(subject, slot, current_assignments, 
+                                                            student_subjects, slot_to_day, hard_subjects, self.config):
+                    continue
+            
+            # 모든 조건을 통과한 경우
+            valid_slots.append(slot)
+        
+        return valid_slots
+    
+    def _check_conflicts_with_existing_subjects(self, 
+                                              new_subject: str, 
+                                              existing_subjects: List[str],
+                                              student_conflict_dict: Dict[str, List[str]] = None,
+                                              listening_conflict_dict: Dict[str, List[str]] = None,
+                                              teacher_conflict_dict: Dict[str, List[str]] = None) -> bool:
+        """
+        새 과목이 기존 과목들과 충돌하지 않는지 확인합니다.
+        충돌이 있으면 False, 없으면 True를 반환합니다.
+        """
+        for existing_subject in existing_subjects:
+            # 학생 충돌 확인
+            if student_conflict_dict:
+                if (new_subject in student_conflict_dict and existing_subject in student_conflict_dict[new_subject]) or \
+                   (existing_subject in student_conflict_dict and new_subject in student_conflict_dict[existing_subject]):
+                    return False
+            
+            # 듣기평가 충돌 확인
+            if listening_conflict_dict:
+                if (new_subject in listening_conflict_dict and existing_subject in listening_conflict_dict[new_subject]) or \
+                   (existing_subject in listening_conflict_dict and new_subject in listening_conflict_dict[existing_subject]):
+                    return False
+            
+            # 교사 충돌 확인
+            if teacher_conflict_dict:
+                if (new_subject in teacher_conflict_dict and existing_subject in teacher_conflict_dict[new_subject]) or \
+                   (existing_subject in teacher_conflict_dict and new_subject in teacher_conflict_dict[existing_subject]):
+                    return False
+        
+        return True
+    
+    def _check_student_burden_constraints(self,
+                                        new_subject: str,
+                                        slot: str,
+                                        current_assignments: Dict[str, List[str]],
+                                        student_subjects: Dict[str, List[str]],
+                                        slot_to_day: Dict[str, str],
+                                        hard_subjects: Dict[str, bool] = None,
+                                        config = None) -> bool:
+        """
+        새 과목을 해당 슬롯에 배치했을 때 학생 부담 제약조건을 위배하지 않는지 확인합니다.
+        기존 _add_student_constraints 로직을 재사용합니다.
+        """
+        # 해당 슬롯의 날짜 확인
+        day = slot_to_day.get(slot)
+        if not day:
+            return True  # 날짜 정보가 없으면 통과
+        
+        # 해당 날짜의 모든 슬롯들 찾기
+        day_slots = [s for s in slot_to_day.keys() if slot_to_day[s] == day]
+        
+        # 해당 날짜에 이미 배치된 과목들 수집
+        existing_subjects_today = []
+        for day_slot in day_slots:
+            if day_slot in current_assignments:
+                existing_subjects_today.extend(current_assignments[day_slot])
+        
+        # 새 과목을 추가했을 때의 상황 시뮬레이션
+        subjects_today_with_new = existing_subjects_today + [new_subject]
+        
+        # 각 학생별로 확인 (기존 _add_student_constraints와 동일한 로직)
+        for student in student_subjects:
+            # 해당 학생이 수강하는 과목들 중 해당 날짜에 배치될 과목들
+            exams_today = [
+                subject for subject in student_subjects[student]
+                if subject in subjects_today_with_new
+            ]
+            
+            # 사용할 config 객체 결정
+            use_config = config if config is not None else self.config
+            
+            # 하루 최대 시험 수 제한 확인 (기존 로직과 동일)
+            if hasattr(use_config, 'max_exams_per_day') and use_config.max_exams_per_day is not None:
+                if len(exams_today) > use_config.max_exams_per_day:
+                    self.logger.debug(f"Student {student} would have {len(exams_today)} exams on {day} (limit: {use_config.max_exams_per_day})")
+                    return False
+            
+            # 하루 최대 어려운 시험 수 제한 확인 (기존 로직과 동일)
+            if hasattr(use_config, 'max_hard_exams_per_day') and use_config.max_hard_exams_per_day is not None:
+                hard_exams_today = [
+                    subject for subject in exams_today
+                    if hard_subjects and hard_subjects.get(subject, False)
+                ]
+                if len(hard_exams_today) > use_config.max_hard_exams_per_day:
+                    self.logger.debug(f"Student {student} would have {len(hard_exams_today)} hard exams on {day} (limit: {use_config.max_hard_exams_per_day})")
+                    return False
+        
+        return True 

@@ -35,6 +35,7 @@ class ExamSchedulerApp:
         self.subject_constraints = {}  # 추가: 과목별 제약조건
         self.teacher_slot_constraints = {}  # 추가: 교사 슬롯별 제약조건
         self.subject_conflicts = {}  # 추가: 과목 충돌 제약조건
+        self.hard_subjects = {}  # 추가: 어려운 과목 설정
         self.enroll_bool = None
         self.student_names = []
         
@@ -86,7 +87,10 @@ class ExamSchedulerApp:
             # 9. 과목 충돌 제약조건 로드
             self.subject_conflicts = self._load_subject_conflicts()
             
-            # 10. 학생별 과목 매핑 생성
+            # 10. 어려운 과목 설정 로드
+            self.hard_subjects = self._load_hard_subjects_config()
+            
+            # 11. 학생별 과목 매핑 생성
             if self.enroll_bool is not None and len(self.student_names) > 0:
                 self.student_subjects = {
                     student: [subject for subject in self.subject_info_dict.keys() 
